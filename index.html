@@ -112,12 +112,25 @@
   .meta .savewarn{display:none;font-size:8px;letter-spacing:1px;color:var(--danger);text-shadow:0 0 8px rgba(255,92,92,.6)}
   .meta .savewarn.on{display:inline}
   #btnSound{
-    appearance:none;flex:0 0 18px;width:18px;height:18px;
+    appearance:none;flex:0 0 26px;width:26px;height:26px;
     display:inline-flex;align-items:center;justify-content:center;
     background:none;border:1px solid #4a3f5e;color:var(--dim);
-    font:inherit;font-size:10px;line-height:1;padding:0;cursor:pointer;
+    font:inherit;font-size:14px;line-height:1;padding:0;cursor:pointer;
   }
   #btnSound:hover{color:var(--cyan);border-color:var(--cyan)}
+  /* 游戏内语言切换：两段式，整块可点 */
+  #btnLang{
+    appearance:none;flex:0 0 auto;display:inline-flex;align-items:stretch;
+    height:26px;padding:0;background:none;border:1px solid #4a3f5e;
+    font:inherit;line-height:1;cursor:pointer;overflow:hidden;
+  }
+  #btnLang span{
+    display:inline-flex;align-items:center;justify-content:center;
+    padding:0 6px;font-size:10px;letter-spacing:0;color:var(--dim);
+  }
+  #btnLang span.on{background:var(--cyan);color:#2a1a08}
+  #btnLang:hover{border-color:var(--cyan)}
+  #btnLang:hover span:not(.on){color:var(--cyan)}
 
   /* ===== 画面：画布铺满 ===== */
   #screen{
@@ -205,6 +218,15 @@
   .panel .sub{font-size:8px;letter-spacing:4px;color:var(--dim);margin:10px 0 18px}
   .saveNote{display:none;margin-top:12px;font-size:9px;letter-spacing:2px;color:var(--dim)}
   .saveNote.show{display:block}
+  /* 开始面板语言选择：等宽两枚，当前语言高亮 */
+  .langPick{display:flex;justify-content:center;gap:7px;margin:4px 0 10px}
+  .langPick button{
+    appearance:none;font:inherit;font-size:12px;letter-spacing:1px;cursor:pointer;
+    padding:8px 20px;min-height:38px;min-width:88px;border:1px solid #3a3358;
+    background:transparent;color:var(--dim);transition:background .16s,color .16s;
+  }
+  .langPick button:hover{color:#f7ead6;border-color:#7a6a9a}
+  .langPick button.on{color:#2a1a08;background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 12px rgba(255,179,80,.4)}
   .panel ul{
     list-style:none;display:flex;flex-direction:column;gap:11px;
     width:max-content;max-width:100%;margin:16px auto 20px;text-align:left;
@@ -335,6 +357,11 @@
   .decorFx b{color:#8ff2f0;font-weight:400}
   .selTag{font-size:8px;letter-spacing:1px;color:#ffb8dc;white-space:nowrap}
 
+  /* 英文文案更长：放宽说明列、允许卡片名折行，避免撑破卡片 */
+  body.lang-en .panel li{grid-template-columns:30px auto 1fr;column-gap:8px}
+  body.lang-en .cardName .cn{white-space:normal;overflow-wrap:break-word;line-height:1.3}
+  body.lang-en .dcTitle,body.lang-en .selTag{white-space:normal}
+
   /* 大屏按比例放大 HUD / 按钮，避免铺满后字太小 */
   @media (max-width:1280px){
     .hint{display:none}
@@ -388,9 +415,15 @@
   @media (max-width:660px){
     #hud{padding:7px max(12px,calc(3.75vw + 10px)) 22px 10px;gap:10px}
     #hud .brand{display:none}
-    .stats{gap:10px}
-    .stat .row{font-size:10px;letter-spacing:1px}
+    .stats{gap:8px}
+    .stat .row{font-size:9px;letter-spacing:0;white-space:nowrap}
+    .stat .row b{font-size:10px}
     .meta .clock{font-size:13px}
+    .meta .fishcount{font-size:7px;letter-spacing:.5px}
+    .metarow{gap:4px}
+    #btnLang{height:32px}
+    #btnLang span{padding:0 8px;font-size:11px}
+    #btnSound{flex:0 0 32px;width:32px;height:32px;font-size:17px}
     .hint{display:none}
     #controls{
       display:grid;grid-template-columns:repeat(6,1fr);
@@ -404,6 +437,7 @@
     .panel h1{font-size:26px;letter-spacing:6px}
     .panel ul{gap:8px}
     .panel li{font-size:10px}
+    .langPick button{min-height:42px;font-size:13px}
     #toast{font-size:9px;letter-spacing:1px;padding:4px 8px;top:94px}
     #decorControls{padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:6px}
     .dcBtn{min-height:40px;padding:9px 11px;font-size:10px}
@@ -441,25 +475,26 @@
     <div class="brand"><span class="dot"></span>CYBER_AQUARIUM <em>v1.0</em></div>
     <div class="stats">
       <div class="stat">
-        <div class="row"><span>饱食度</span><b id="vFood">85</b></div>
+        <div class="row"><span data-i18n="hud.food">饱食度</span><b id="vFood">85</b></div>
         <div class="bar"><i id="barFood"></i></div>
       </div>
       <div class="stat">
-        <div class="row"><span>水质</span><b id="vWater">100</b></div>
+        <div class="row"><span data-i18n="hud.water">水质</span><b id="vWater">100</b></div>
         <div class="bar"><i id="barWater"></i></div>
       </div>
     </div>
     <div class="meta">
       <div class="moneyrow">
         <span class="money"><span class="sym">¥</span><b id="vMoney">100</b></span>
-        <span class="income"><span class="lb">结算</span><b id="vIncome">05:00</b></span>
+        <span class="income"><span class="lb" data-i18n="hud.income">结算</span><b id="vIncome">05:00</b></span>
       </div>
       <div class="metarow">
-        <span class="savewarn" id="saveWarn">进度未保存</span>
+        <span class="savewarn" id="saveWarn" data-i18n="hud.savewarn">进度未保存</span>
         <span class="fishcount">FISH <b id="fishCount">3</b>/<span id="capCount">6</span></span>
         <span class="sickcount" id="sickCount"></span>
         <span class="clock" id="clock">00:00</span>
-        <button id="btnSound" title="音效开关" aria-label="音效开关">♪</button>
+        <button id="btnLang" title="切换语言 / Switch language"><span data-l="zh" class="on">中</span><span data-l="en">EN</span></button>
+        <button id="btnSound" title="音效开关" aria-label="音效开关" data-i18n-title="btn.sound">♪</button>
       </div>
     </div>
   </header>
@@ -470,24 +505,24 @@
   </div>
 
   <footer id="controls">
-    <button id="btnFeed" class="btn"><span class="key">F</span>喂 食</button>
-    <button id="btnClean" class="btn alt"><span class="key">C</span>清 理</button>
-    <button id="btnTreat" class="btn alt" disabled><span class="key">Q</span>用 药 <span id="potionCount">0</span></button>
-    <button id="btnShop" class="btn"><span class="key">B</span>商 店</button>
-    <button id="btnDecor" class="btn alt"><span class="key">D</span>造 景</button>
+    <button id="btnFeed" class="btn"><span class="key">F</span><span data-i18n="btn.feed">喂 食</span></button>
+    <button id="btnClean" class="btn alt"><span class="key">C</span><span data-i18n="btn.clean">清 理</span></button>
+    <button id="btnTreat" class="btn alt" disabled><span class="key">Q</span><span data-i18n="btn.treat">用 药</span> <span id="potionCount">0</span></button>
+    <button id="btnShop" class="btn"><span class="key">B</span><span data-i18n="btn.shop">商 店</span></button>
+    <button id="btnDecor" class="btn alt"><span class="key">D</span><span data-i18n="btn.decor">造 景</span></button>
     <div class="hint">
-      <span class="hintKeys"><b>F</b> 喂食 · <b>C</b> 清理 · <b>Q</b> 用药 · <b>B</b> 商店 · <b>D</b> 造景</span>
-      <span class="hintTips">点鱼查看状态 · 点水面撒饵</span>
+      <span class="hintKeys" data-i18n-html="hint.keys"><b>F</b> 喂食 · <b>C</b> 清理 · <b>Q</b> 用药 · <b>B</b> 商店 · <b>D</b> 造景</span>
+      <span class="hintTips" data-i18n="hint.tips">点鱼查看状态 · 点水面撒饵</span>
     </div>
   </footer>
 
   <footer id="decorControls" class="hidden">
     <div class="dcRow">
-      <span class="dcTitle">造 景 模 式 · 当前 <b id="dcLayerName">中景</b></span>
+      <span class="dcTitle" id="dcTitle"><span data-i18n="decor.modeLabel">造 景 模 式 · 当前</span> <b id="dcLayerName">中景</b></span>
       <div class="decorActs" id="layerBtns">
-        <button class="dcBtn" data-layer="back">背 景</button>
-        <button class="dcBtn on" data-layer="mid">中 景</button>
-        <button class="dcBtn" data-layer="front">前 景</button>
+        <button class="dcBtn" data-layer="back" data-i18n="decor.back">背 景</button>
+        <button class="dcBtn on" data-layer="mid" data-i18n="decor.mid">中 景</button>
+        <button class="dcBtn" data-layer="front" data-i18n="decor.front">前 景</button>
       </div>
       <div class="decorFx" id="decorFx">造景加成：无</div>
       <span class="selTag" id="selTag">未选中物件 · 从库存拖入鱼缸</span>
@@ -495,35 +530,39 @@
     <div class="dcRow">
       <div id="decorInv" class="decorInv"></div>
       <div class="decorActs">
-        <button class="dcBtn" id="btnRotate" disabled>旋 转 R</button>
+        <button class="dcBtn" id="btnRotate" disabled data-i18n="decor.rotate">旋 转 R</button>
         <button class="dcBtn danger" id="btnRefund" disabled>回 收</button>
-        <button class="dcBtn" id="btnDecorDone">完 成 D</button>
+        <button class="dcBtn" id="btnDecorDone" data-i18n="decor.done">完 成 D</button>
       </div>
     </div>
   </footer>
 
   <div id="overlay">
     <div class="panel" id="panelStart">
-      <div class="tag">// TANK_001 · 已通电</div>
-      <h1>赛博养鱼</h1>
+      <div class="tag" data-i18n="start.tag">// TANK_001 · 已通电</div>
+      <h1 data-i18n="start.title">赛博养鱼</h1>
       <div class="sub">C Y B E R &nbsp; A Q U A R I U M</div>
       <ul>
-        <li><b class="k">F</b><b class="nm">喂食</b><span>撒饵，鱼会游过来吃</span></li>
-        <li><b class="k">C</b><b class="nm">清理</b><span>擦掉缸壁和缸底的脏污</span></li>
-        <li><b class="k">Q</b><b class="nm">用药</b><span>点头顶红十字的病鱼</span></li>
-        <li><b class="k">B</b><b class="nm">商店</b><span>买鱼、鱼药和造景</span></li>
-        <li><b class="k">D</b><b class="nm">造景</b><span>拖入鱼缸，可旋转</span></li>
-        <li><b class="k">点鱼</b><b class="nm">查看</b><span>看寿命和当前状态</span></li>
+        <li><b class="k">F</b><b class="nm" data-i18n="start.feed">喂食</b><span data-i18n="start.feedDesc">撒饵，鱼会游过来吃</span></li>
+        <li><b class="k">C</b><b class="nm" data-i18n="start.clean">清理</b><span data-i18n="start.cleanDesc">擦掉缸壁和缸底的脏污</span></li>
+        <li><b class="k">Q</b><b class="nm" data-i18n="start.treat">用药</b><span data-i18n="start.treatDesc">点头顶红十字的病鱼</span></li>
+        <li><b class="k">B</b><b class="nm" data-i18n="start.shop">商店</b><span data-i18n="start.shopDesc">买鱼、鱼药和造景</span></li>
+        <li><b class="k">D</b><b class="nm" data-i18n="start.decor">造景</b><span data-i18n="start.decorDesc">拖入鱼缸，可旋转</span></li>
+        <li><b class="k" data-i18n="start.tap">点鱼</b><b class="nm" data-i18n="start.view">查看</b><span data-i18n="start.viewDesc">看寿命和当前状态</span></li>
       </ul>
+      <div class="langPick" id="langPick">
+        <button type="button" data-lang="zh" class="on">中文</button>
+        <button type="button" data-lang="en">English</button>
+      </div>
       <button id="btnStart" class="btn big">进 入 鱼 缸</button>
       <div class="saveNote" id="saveNote">存档已读取 · 继续上次的鱼缸</div>
     </div>
     <div class="panel hidden" id="panelOver">
       <div class="tag danger">// SIGNAL LOST</div>
-      <h1>全缸覆没</h1>
-      <div class="score">存活 <b id="finalTime">00:00</b></div>
-      <div class="score small">累计收益 ¥<b id="finalMoney">0</b> · 最佳记录 <b id="bestTime">00:00</b></div>
-      <button id="btnRestart" class="btn big">重新注水</button>
+      <h1 data-i18n="over.title">全缸覆没</h1>
+      <div class="score"><span data-i18n="over.alive">存活</span> <b id="finalTime">00:00</b></div>
+      <div class="score small"><span data-i18n="over.earned">累计收益</span> ¥<b id="finalMoney">0</b> · <span data-i18n="over.best">最佳记录</span> <b id="bestTime">00:00</b></div>
+      <button id="btnRestart" class="btn big" data-i18n="over.restart">重新注水</button>
     </div>
   </div>
 
@@ -531,26 +570,26 @@
     <div class="shopPanel">
       <div class="shopHead">
         <div>
-          <div class="tag">// SHOP · 水族商店</div>
+          <div class="tag" data-i18n="shop.tag">// SHOP · 水族商店</div>
           <h2 id="shopTitle">补 给</h2>
         </div>
         <div class="shopBal">
-          余额
+          <span data-i18n="shop.balance">余额</span>
           <b>¥<span id="shopMoney">100</span></b>
-          <div class="cap">鱼缸 <span id="shopCap">3/6</span></div>
+          <div class="cap"><span data-i18n="shop.tank">鱼缸</span> <span id="shopCap">3/6</span></div>
         </div>
       </div>
       <div class="shopTabs" id="shopTabs">
-        <button class="on" data-tab="fish">鱼 · 补给</button>
-        <button data-tab="plant">植物</button>
-        <button data-tab="hard">硬景</button>
-        <button data-tab="coral">珊瑚</button>
-        <button data-tab="prop">道具</button>
+        <button class="on" data-tab="fish" data-i18n="shop.tabFish">鱼 · 补给</button>
+        <button data-tab="plant" data-i18n="shop.tabPlant">植物</button>
+        <button data-tab="hard" data-i18n="shop.tabHard">硬景</button>
+        <button data-tab="coral" data-i18n="shop.tabCoral">珊瑚</button>
+        <button data-tab="prop" data-i18n="shop.tabProp">道具</button>
       </div>
       <div id="shopGrid" class="shopGrid"></div>
       <div class="shopFoot">
-        <div class="shopNote">造景买完按 D 从库存拖入鱼缸<br>植物改善水质 · 珊瑚降低病害 · 气泡石提升收益</div>
-        <button id="btnShopClose" class="btn">返 回 鱼 缸</button>
+        <div class="shopNote" data-i18n-html="shop.note">造景买完按 D 从库存拖入鱼缸<br>植物改善水质 · 珊瑚降低病害 · 气泡石提升收益</div>
+        <button id="btnShopClose" class="btn" data-i18n="shop.back">返 回 鱼 缸</button>
       </div>
     </div>
   </div>
@@ -607,33 +646,38 @@ const TUNING = {
 const SPECIES_ORDER = ['neon','guppy','betta','angel','discus'];
 const SPECIES = {
   neon: {
-    key:'neon', name:'霓虹灯鱼', en:'NEON TETRA', shape:'neon', size:0.62,
+    key:'neon', name:'霓虹灯鱼', en:'NEON TETRA', nameEn:'Neon Tetra', shape:'neon', size:0.62,
     price:70, lifespan:6*3600, income:4, hardiness:0.45,
     desc:'体型最小的群游鱼，亮蓝色侧线。体质弱，最扛不住饿。',
+    descEn:'Tiny schooling fish with a bright blue stripe. Weak and quick to starve.',
     pal:{base:'#dfeef8', light:'#f6fcff', dark:'#7d99b4', fin:'#9fd8f0', accent:'#5fe0ff', accent2:'#ff5a68'}
   },
   guppy: {
-    key:'guppy', name:'孔雀鱼', en:'GUPPY', shape:'guppy', size:0.80,
+    key:'guppy', name:'孔雀鱼', en:'GUPPY', nameEn:'Guppy', shape:'guppy', size:0.80,
     price:110, lifespan:20*3600, income:5, hardiness:0.6,
     desc:'尾鳍像一把小扇子，性子活泼，好养也便宜。',
+    descEn:'Fanned tail and a lively temper. Cheap and easy to keep.',
     pal:{base:'#ffa24a', light:'#ffe4a6', dark:'#b0521c', fin:'#ff8a4c', finLight:'#ffd36e', accent:'#ff5f86', irid:'#63e6dc', violet:'#9a6bff', spot:'#4a2440', spot2:'#fff1a8'}
   },
   betta: {
-    key:'betta', name:'泰国斗鱼', en:'BETTA', shape:'betta', size:0.98,
+    key:'betta', name:'泰国斗鱼', en:'BETTA', nameEn:'Betta', shape:'betta', size:0.98,
     price:160, lifespan:28*3600, income:6, hardiness:0.72,
     desc:'红蓝“蝴蝶”长鳍，游动时像裙摆一样飘。皮实，能扛一阵子。',
+    descEn:'Red-blue butterfly fins drifting like a skirt. Tough and forgiving.',
     pal:{base:'#2a4fc0', light:'#8fb4ff', dark:'#1b2170', fin:'#e02c4a', finLight:'#ff728f', finDeep:'#a81f3c', edge:'#ffe9f2', accent:'#7b2fd6'}
   },
   angel: {
-    key:'angel', name:'神仙鱼', en:'ANGELFISH', shape:'angel', size:1.08,
+    key:'angel', name:'神仙鱼', en:'ANGELFISH', nameEn:'Angelfish', shape:'angel', size:1.08,
     price:220, lifespan:40*3600, income:8, hardiness:0.8,
     desc:'高挑的三角身形，游得慢而稳。寿命长，脾气好。',
+    descEn:'Tall triangle body and a slow, steady swim. Long-lived and gentle.',
     pal:{base:'#d3dbe3', light:'#f4f8fb', dark:'#4e5a68', fin:'#8e9aa8', finEdge:'#36404d', accent:'#2b3340', sheen:'#9fd6e0'}
   },
   discus: {
-    key:'discus', name:'七彩神仙', en:'DISCUS', shape:'discus', size:2.1,
+    key:'discus', name:'七彩神仙', en:'DISCUS', nameEn:'Discus', shape:'discus', size:2.1,
     price:320, lifespan:52*3600, income:11, hardiness:0.85,
     desc:'圆盘形的大家伙，身上有深色横纹。收益最高，也最贵。',
+    descEn:'A big round disc with dark bars. Best income, steepest price.',
     pal:{base:'#ff8a4a', light:'#ffd0a0', dark:'#a03a2e', fin:'#ffb066', accent:'#8a3a2e'}
   }
 };
@@ -661,6 +705,282 @@ function resolveSpecies(key){
 const POTION = { key:'potion', name:'鱼药', price:80 };
 
 /* =========================================================
+   双语（默认中文，选择存独立 key，不改动任何战局状态）
+   ========================================================= */
+const LANG_KEY = 'cyber-aquarium-lang';
+let lang = 'zh';
+try{ if(localStorage.getItem(LANG_KEY) === 'en') lang = 'en'; }catch(e){}
+
+const I18N = {
+  zh: {
+    'doc.title': '赛博养鱼 · CYBER AQUARIUM',
+    'hud.food': '饱食度',
+    'hud.water': '水质',
+    'hud.income': '结算',
+    'hud.savewarn': '进度未保存',
+    'hud.sick': '病 %1',
+    'btn.sound': '音效开关',
+    'btn.feed': '喂 食',
+    'btn.clean': '清 理',
+    'btn.treat': '用 药',
+    'btn.shop': '商 店',
+    'btn.decor': '造 景',
+    'hint.keys': '<b>F</b> 喂食 · <b>C</b> 清理 · <b>Q</b> 用药 · <b>B</b> 商店 · <b>D</b> 造景',
+    'hint.tips': '点鱼查看状态 · 点水面撒饵',
+    'start.tag': '// TANK_001 · 已通电',
+    'start.title': '赛博养鱼',
+    'start.feed': '喂食',
+    'start.feedDesc': '撒饵，鱼会游过来吃',
+    'start.clean': '清理',
+    'start.cleanDesc': '擦掉缸壁和缸底的脏污',
+    'start.treat': '用药',
+    'start.treatDesc': '点头顶红十字的病鱼',
+    'start.shop': '商店',
+    'start.shopDesc': '买鱼、鱼药和造景',
+    'start.decor': '造景',
+    'start.decorDesc': '拖入鱼缸，可旋转',
+    'start.tap': '点鱼',
+    'start.view': '查看',
+    'start.viewDesc': '看寿命和当前状态',
+    'start.enter': '进 入 鱼 缸',
+    'start.continue': '继 续 鱼 缸',
+    'start.rescue': '抢 救 鱼 缸',
+    'over.title': '全缸覆没',
+    'over.alive': '存活',
+    'over.earned': '累计收益',
+    'over.best': '最佳记录',
+    'over.restart': '重新注水',
+    'shop.tag': '// SHOP · 水族商店',
+    'shop.title': '补 给',
+    'shop.balance': '余额',
+    'shop.tank': '鱼缸',
+    'shop.tabFish': '鱼 · 补给',
+    'shop.tabPlant': '植物',
+    'shop.tabHard': '硬景',
+    'shop.tabCoral': '珊瑚',
+    'shop.tabProp': '道具',
+    'shop.note': '造景买完按 D 从库存拖入鱼缸<br>植物改善水质 · 珊瑚降低病害 · 气泡石提升收益',
+    'shop.back': '返 回 鱼 缸',
+    'shop.buy': '购 买',
+    'shop.noMoney': '钱 不 够',
+    'shop.tankFull': '鱼 缸 满 了',
+    'shop.soldOut': '已 售 罄',
+    'shop.stock': '库存',
+    'shop.own': '持有',
+    'shop.life': '寿命 %1h',
+    'shop.hardy': '体质 %1',
+    'shop.income': '收益 %1',
+    'hardy.weak': '弱',
+    'hardy.mid': '中',
+    'hardy.strong': '强',
+    'shop.pure': '纯装饰',
+    'shop.waterFx': '水质 +%1/s',
+    'shop.sickFx': '病害 -%1%',
+    'shop.incomeFx': '收益 +%1%',
+    'shop.potionName': '鱼药',
+    'shop.potionEn': 'MEDICINE',
+    'shop.potionOwn': '持有 %1',
+    'shop.potionCure': '治愈一条病鱼',
+    'shop.potionDesc': '按 Q 进入治疗模式，点生病的鱼使用。拖得越久越危险。',
+    'decor.modeLabel': '造 景 模 式 · 当前',
+    'decor.back': '背 景',
+    'decor.mid': '中 景',
+    'decor.front': '前 景',
+    'layer.back': '背景',
+    'layer.mid': '中景',
+    'layer.front': '前景',
+    'decor.rotate': '旋 转 R',
+    'decor.refund': '回 收',
+    'decor.refundAmt': '回 收 ¥%1',
+    'decor.done': '完 成 D',
+    'decor.selNone': '未选中物件 · 从库存拖入鱼缸',
+    'decor.selected': '已选 %1 · 拖动调整位置',
+    'decor.placing': '待放置 %1 · 点鱼缸放下',
+    'decor.bonusNone': '造景加成：<b>无</b>',
+    'decor.plantFx': '植物 %1 · 水质 +%2/h',
+    'decor.coralFx': '珊瑚 %1 · 病害 -%2%',
+    'decor.bubbleFx': '气泡石 %1 · 收益 +%2%',
+    'toast.saveWarn': '进度未保存 · 存储空间已满',
+    'toast.income': '收益到账 +¥%1',
+    'toast.noIncome': '本次没有收益 · 鱼都病倒了',
+    'toast.noMoney': '钱不够',
+    'toast.boughtPotion': '买到一瓶鱼药 · 按 Q 使用',
+    'toast.tankFull': '鱼缸满了 · 等鱼离开后再买',
+    'toast.fishIn': '%1 入缸了',
+    'toast.soldOut': '这件造景已经卖完了',
+    'toast.boughtDecor': '买到 %1 · 按 D 拖入鱼缸',
+    'toast.noStock': '库存不足 · 先去商店购买',
+    'toast.placed': '%1 已放入 · 拖动调整位置',
+    'toast.pickFirst': '先选中一个造景物',
+    'toast.refunded': '已回收 %1 · 返还 ¥%2',
+    'toast.decorOn': '造景模式 · 从库存拖入鱼缸，拖动物件调整位置',
+    'toast.noPotion': '没有鱼药 · 去商店买一瓶',
+    'toast.treatOn': '治疗模式 · 点生病的鱼',
+    'toast.cured': '%1 治好了',
+    'toast.notSick': '这条鱼没生病',
+    'toast.tapSick': '点一下生病的鱼',
+    'toast.dragIn': '把物件拖进鱼缸，或点鱼缸放下',
+    'toast.cleanOn': '清洁模式 · 拖动海绵擦掉藻斑',
+    'toast.rescueGift': '鱼缸刚覆没 · 附赠 1 瓶鱼药 · 用药抢救',
+    'toast.rescueBuy': '鱼缸刚覆没 · 鱼正病危 · 买鱼药抢救',
+    'toast.resumed': '已从存档继续 · 离线期间不结算',
+    'toast.fishSick': '%1 生病了 · 买鱼药治疗',
+    'toast.diedOld': '%1 寿终正寝',
+    'toast.diedSick': '%1 病逝了',
+    'toast.died': '%1 死去了',
+    'fish.info': '%1 · 寿命 %2% · %3',
+    'fish.sick': '生病 %1%',
+    'fish.old': '年老',
+    'fish.hungry': '很饿',
+    'fish.ok': '状态良好',
+    'note.resume': '存档已读取 · 继续上次的鱼缸',
+    'note.rescue': '鱼缸刚覆没 · 继续可抢救（还剩 %1 秒）',
+    'note.rescueGift': ' · 附赠 1 瓶鱼药',
+    'note.noStore': '本次进度不会保存 · 浏览器禁用了站点数据'
+  },
+  en: {
+    'doc.title': 'Cyber Aquarium',
+    'hud.food': 'FOOD',
+    'hud.water': 'WATER',
+    'hud.income': 'PAY',
+    'hud.savewarn': 'UNSAVED',
+    'hud.sick': 'SICK %1',
+    'btn.sound': 'Sound on/off',
+    'btn.feed': 'Feed',
+    'btn.clean': 'Clean',
+    'btn.treat': 'Treat',
+    'btn.shop': 'Shop',
+    'btn.decor': 'Decor',
+    'hint.keys': '<b>F</b> Feed · <b>C</b> Clean · <b>Q</b> Treat · <b>B</b> Shop · <b>D</b> Decor',
+    'hint.tips': 'Tap fish for status · Tap water to feed',
+    'start.tag': '// TANK_001 · ONLINE',
+    'start.title': 'CYBER TANK',
+    'start.feed': 'Feed',
+    'start.feedDesc': 'Drop food, fish swim up to eat',
+    'start.clean': 'Clean',
+    'start.cleanDesc': 'Scrub slime off glass and floor',
+    'start.treat': 'Treat',
+    'start.treatDesc': 'Tap sick fish with a red cross',
+    'start.shop': 'Shop',
+    'start.shopDesc': 'Buy fish, medicine and decor',
+    'start.decor': 'Decor',
+    'start.decorDesc': 'Drag in, rotate to fit',
+    'start.tap': 'Tap',
+    'start.view': 'Fish',
+    'start.viewDesc': 'See lifespan and status',
+    'start.enter': 'ENTER TANK',
+    'start.continue': 'CONTINUE',
+    'start.rescue': 'RESCUE',
+    'over.title': 'TANK LOST',
+    'over.alive': 'Survived',
+    'over.earned': 'Earned',
+    'over.best': 'Best',
+    'over.restart': 'REFILL TANK',
+    'shop.tag': '// SHOP · AQUARIUM',
+    'shop.title': 'SUPPLY',
+    'shop.balance': 'BALANCE',
+    'shop.tank': 'TANK',
+    'shop.tabFish': 'Fish',
+    'shop.tabPlant': 'Plants',
+    'shop.tabHard': 'Hardscape',
+    'shop.tabCoral': 'Coral',
+    'shop.tabProp': 'Props',
+    'shop.note': 'Press D to place decor from inventory<br>Plants clean water · Coral cuts sickness · Bubbles boost income',
+    'shop.back': 'BACK TO TANK',
+    'shop.buy': 'BUY',
+    'shop.noMoney': 'NO FUNDS',
+    'shop.tankFull': 'TANK FULL',
+    'shop.soldOut': 'SOLD OUT',
+    'shop.stock': 'STOCK',
+    'shop.own': 'OWN',
+    'shop.life': 'Life %1h',
+    'shop.hardy': 'Hardy %1',
+    'shop.income': 'Income %1',
+    'hardy.weak': 'Weak',
+    'hardy.mid': 'Mid',
+    'hardy.strong': 'Strong',
+    'shop.pure': 'Decor only',
+    'shop.waterFx': 'Water +%1/s',
+    'shop.sickFx': 'Sickness -%1%',
+    'shop.incomeFx': 'Income +%1%',
+    'shop.potionName': 'Medicine',
+    'shop.potionEn': 'MEDICINE',
+    'shop.potionOwn': 'Have %1',
+    'shop.potionCure': 'Cures one sick fish',
+    'shop.potionDesc': 'Press Q, then tap a sick fish. Waiting makes it worse.',
+    'decor.modeLabel': 'DECOR MODE ·',
+    'decor.back': 'Back',
+    'decor.mid': 'Mid',
+    'decor.front': 'Front',
+    'layer.back': 'Back',
+    'layer.mid': 'Mid',
+    'layer.front': 'Front',
+    'decor.rotate': 'ROTATE R',
+    'decor.refund': 'REFUND',
+    'decor.refundAmt': 'REFUND ¥%1',
+    'decor.done': 'DONE D',
+    'decor.selNone': 'Nothing selected · Drag from inventory',
+    'decor.selected': 'Selected %1 · Drag to move',
+    'decor.placing': 'Placing %1 · Tap tank to drop',
+    'decor.bonusNone': 'Decor bonus: <b>none</b>',
+    'decor.plantFx': 'Plants %1 · Water +%2/h',
+    'decor.coralFx': 'Coral %1 · Sickness -%2%',
+    'decor.bubbleFx': 'Bubbles %1 · Income +%2%',
+    'toast.saveWarn': 'Progress not saved · Storage full',
+    'toast.income': 'Income +¥%1',
+    'toast.noIncome': 'No income · All fish are sick',
+    'toast.noMoney': 'Not enough money',
+    'toast.boughtPotion': 'Bought medicine · Press Q',
+    'toast.tankFull': 'Tank full · Wait for space',
+    'toast.fishIn': '%1 added to tank',
+    'toast.soldOut': 'This decor is sold out',
+    'toast.boughtDecor': 'Bought %1 · Press D to place',
+    'toast.noStock': 'Out of stock · Buy more first',
+    'toast.placed': '%1 placed · Drag to move',
+    'toast.pickFirst': 'Select a decoration first',
+    'toast.refunded': 'Refunded %1 · +¥%2',
+    'toast.decorOn': 'Decor mode · Drag items from inventory',
+    'toast.noPotion': 'No medicine · Buy a bottle',
+    'toast.treatOn': 'Treat mode · Tap a sick fish',
+    'toast.cured': '%1 cured',
+    'toast.notSick': "This fish isn't sick",
+    'toast.tapSick': 'Tap a sick fish',
+    'toast.dragIn': 'Drag into the tank or tap to drop',
+    'toast.cleanOn': 'Clean mode · Drag sponge to scrub',
+    'toast.rescueGift': 'Tank wiped · 1 free medicine · Treat now',
+    'toast.rescueBuy': 'Tank wiped · Fish critical · Buy medicine',
+    'toast.resumed': 'Resumed · No offline income',
+    'toast.fishSick': '%1 got sick · Buy medicine',
+    'toast.diedOld': '%1 died of old age',
+    'toast.diedSick': '%1 died of sickness',
+    'toast.died': '%1 died',
+    'fish.info': '%1 · Life %2% · %3',
+    'fish.sick': 'Sick %1%',
+    'fish.old': 'Old',
+    'fish.hungry': 'Hungry',
+    'fish.ok': 'Healthy',
+    'note.resume': 'Save loaded · Resuming your tank',
+    'note.rescue': 'Tank wiped · Rescuable for %1s',
+    'note.rescueGift': ' · 1 free medicine',
+    'note.noStore': "Progress won't be saved · Site data blocked"
+  }
+};
+
+function T(key){
+  const dict = I18N[lang] || I18N.zh;
+  let s = dict[key];
+  if(s === undefined) s = I18N.zh[key];
+  if(s === undefined) return key;
+  for(let i=1;i<arguments.length;i++) s = s.split('%'+i).join(arguments[i]);
+  return s;
+}
+function isEn(){ return lang === 'en'; }
+function spLabel(sp){ return sp ? (isEn() && sp.nameEn ? sp.nameEn : sp.name) : ''; }
+function decorLabel(key){ const d = ownVal(DECOR, key); return d ? (isEn() && d.nameEn ? d.nameEn : d.name) : key; }
+function decorShort(key){ const d = ownVal(DECOR, key); return d ? (isEn() && d.shortEn ? d.shortEn : d.name) : key; }
+function layerLabel(layer){ return T('layer.' + layer); }
+
+/* =========================================================
    造景配置：价格 / 库存 / 效果 / 外观都集中在这里
    —— 效果三档建议：
       植物水质恢复  低 0.00006 / 中 0.00010 / 高 0.00016
@@ -678,46 +998,62 @@ const DECOR_TUNING = {
 };
 
 const DECOR_CATS = [
-  {key:'fish',  name:'鱼 · 补给'},
-  {key:'plant', name:'植物'},
-  {key:'hard',  name:'硬景'},
-  {key:'coral', name:'珊瑚'},
-  {key:'prop',  name:'道具'}
+  {key:'fish',  name:'鱼 · 补给', en:'Fish'},
+  {key:'plant', name:'植物', en:'Plants'},
+  {key:'hard',  name:'硬景', en:'Hardscape'},
+  {key:'coral', name:'珊瑚', en:'Coral'},
+  {key:'prop',  name:'道具', en:'Props'}
 ];
 
 const DECOR = {
-  seaweed:    {key:'seaweed', name:'海草', en:'SEAWEED', cat:'plant', price:60, stock:12, w:18, h:46, layer:'mid', art:'seaweed', power:1.0,
-               desc:'随水流摇摆的细长海草，缓慢恢复水质。'},
-  anubias:    {key:'anubias', name:'水榕', en:'ANUBIAS', cat:'plant', price:80, stock:10, w:22, h:22, layer:'mid', art:'anubias', power:1.3,
-               desc:'宽叶水榕，根系发达，净水效果最好。'},
-  moss:       {key:'moss', name:'鹿角苔', en:'STAGHORN MOSS', cat:'plant', price:50, stock:14, w:26, h:12, layer:'front', art:'moss', power:0.8,
-               desc:'贴地生长的苔团，给前景添一层绿意。'},
-  tigervallis:{key:'tigervallis', name:'虎纹水兰', en:'TIGER VALLISNERIA', cat:'plant', price:95, stock:8, w:22, h:132, layer:'back', art:'tigervallis', power:1.6,
-               desc:'长带状叶片向上抽近水面，叶面有横向虎纹，后景气势最足。'},
-  javafern:   {key:'javafern', name:'铁皇冠', en:'JAVA FERN', cat:'plant', price:85, stock:9, w:26, h:30, layer:'mid', art:'javafern', power:1.1,
-               desc:'短宽硬挺的丛生叶，深绿带油亮光泽，中景最稳。'},
-  pebble:     {key:'pebble', name:'卵石', en:'PEBBLE', cat:'hard', price:40, stock:14, w:20, h:8, layer:'mid', art:'pebble',
-               desc:'几颗圆润的小石子，适合成组摆放。'},
-  rock:       {key:'rock', name:'岩石山', en:'ROCK', cat:'hard', price:120, stock:8, w:46, h:29, layer:'mid', art:'rock',
-               desc:'有棱面的岩块，撑起中景的体量。'},
-  driftwood:  {key:'driftwood', name:'沉木', en:'DRIFTWOOD', cat:'hard', price:110, stock:8, w:30, h:30, layer:'mid', art:'driftwood',
-               desc:'斜生的枯木，枝杈上挂着苔藓。'},
-  brain:      {key:'brain', name:'脑珊瑚', en:'BRAIN CORAL', cat:'coral', price:150, stock:6, w:24, h:14, layer:'mid', art:'brain', power:1.0,
-               desc:'沟回状脑珊瑚，降低鱼群生病概率。'},
-  coralbranch:{key:'coralbranch', name:'鹿角珊瑚', en:'STAGHORN', cat:'coral', price:140, stock:6, w:24, h:30, layer:'front', art:'coralbranch', power:0.8,
-               desc:'分叉的鹿角珊瑚，青蓝枝梢带品红。'},
-  anemone:    {key:'anemone', name:'海葵', en:'ANEMONE', cat:'coral', price:180, stock:5, w:22, h:22, layer:'mid', art:'anemone', power:1.3,
-               desc:'触手轻摆的海葵，最能安抚鱼群。'},
-  wreck:      {key:'wreck', name:'沉船残骸', en:'SHIPWRECK', cat:'prop', price:260, stock:3, w:56, h:38, layer:'back', art:'wreck',
-               desc:'半埋沙中的机械船骸，缝隙里长着发光苔。'},
-  mechcore:   {key:'mechcore', name:'机械核心', en:'MECH CORE', cat:'prop', price:300, stock:3, w:30, h:32, layer:'back', art:'mechcore',
-               desc:'仍在脉动的旧时代核心，青蓝辉光。'},
-  shells:     {key:'shells', name:'贝壳堆', en:'SHELL PILE', cat:'prop', price:70, stock:10, w:28, h:10, layer:'front', art:'shells',
-               desc:'散落的小贝壳，适合放在前景边角。'},
-  bubble:     {key:'bubble', name:'气泡石', en:'BUBBLE STONE', cat:'prop', price:120, stock:8, w:22, h:14, layer:'mid', art:'bubble',
-               desc:'持续冒泡，让每轮收益提高 6%。'},
-  neonsign:   {key:'neonsign', name:'霓虹招牌', en:'NEON SIGN', cat:'prop', price:220, stock:4, w:20, h:34, layer:'back', art:'neonsign',
-               desc:'旧街区的霓虹小招牌，青蓝与品红交替闪。'}
+  seaweed:    {key:'seaweed', name:'海草', en:'SEAWEED', nameEn:'Seaweed', shortEn:'Seaweed', cat:'plant', price:60, stock:12, w:18, h:46, layer:'mid', art:'seaweed', power:1.0,
+               desc:'随水流摇摆的细长海草，缓慢恢复水质。',
+               descEn:'Swaying ribbon weed that slowly cleans the water.'},
+  anubias:    {key:'anubias', name:'水榕', en:'ANUBIAS', nameEn:'Anubias', shortEn:'Anubias', cat:'plant', price:80, stock:10, w:22, h:22, layer:'mid', art:'anubias', power:1.3,
+               desc:'宽叶水榕，根系发达，净水效果最好。',
+               descEn:'Broad-leaf plant with strong roots. Best water cleaning.'},
+  moss:       {key:'moss', name:'鹿角苔', en:'STAGHORN MOSS', nameEn:'Staghorn Moss', shortEn:'Moss', cat:'plant', price:50, stock:14, w:26, h:12, layer:'front', art:'moss', power:0.8,
+               desc:'贴地生长的苔团，给前景添一层绿意。',
+               descEn:'Low moss carpet that adds green to the foreground.'},
+  tigervallis:{key:'tigervallis', name:'虎纹水兰', en:'TIGER VALLISNERIA', nameEn:'Tiger Vallisneria', shortEn:'Tiger Val', cat:'plant', price:95, stock:8, w:22, h:132, layer:'back', art:'tigervallis', power:1.6,
+               desc:'长带状叶片向上抽近水面，叶面有横向虎纹，后景气势最足。',
+               descEn:'Tall striped ribbons reaching for the surface. Best back layer.'},
+  javafern:   {key:'javafern', name:'铁皇冠', en:'JAVA FERN', nameEn:'Java Fern', shortEn:'Java Fern', cat:'plant', price:85, stock:9, w:26, h:30, layer:'mid', art:'javafern', power:1.1,
+               desc:'短宽硬挺的丛生叶，深绿带油亮光泽，中景最稳。',
+               descEn:'Stiff clustered fronds with a glossy deep green.'},
+  pebble:     {key:'pebble', name:'卵石', en:'PEBBLE', nameEn:'Pebble', shortEn:'Pebble', cat:'hard', price:40, stock:14, w:20, h:8, layer:'mid', art:'pebble',
+               desc:'几颗圆润的小石子，适合成组摆放。',
+               descEn:'A few smooth stones, best placed in groups.'},
+  rock:       {key:'rock', name:'岩石山', en:'ROCK', nameEn:'Rock', shortEn:'Rock', cat:'hard', price:120, stock:8, w:46, h:29, layer:'mid', art:'rock',
+               desc:'有棱面的岩块，撑起中景的体量。',
+               descEn:'Angular rock that anchors the midground.'},
+  driftwood:  {key:'driftwood', name:'沉木', en:'DRIFTWOOD', nameEn:'Driftwood', shortEn:'Driftwood', cat:'hard', price:110, stock:8, w:30, h:30, layer:'mid', art:'driftwood',
+               desc:'斜生的枯木，枝杈上挂着苔藓。',
+               descEn:'Slanted dead wood with moss on its branches.'},
+  brain:      {key:'brain', name:'脑珊瑚', en:'BRAIN CORAL', nameEn:'Brain Coral', shortEn:'Brain Coral', cat:'coral', price:150, stock:6, w:24, h:14, layer:'mid', art:'brain', power:1.0,
+               desc:'沟回状脑珊瑚，降低鱼群生病概率。',
+               descEn:'Grooved brain coral that lowers sickness risk.'},
+  coralbranch:{key:'coralbranch', name:'鹿角珊瑚', en:'STAGHORN CORAL', nameEn:'Staghorn Coral', shortEn:'Staghorn', cat:'coral', price:140, stock:6, w:24, h:30, layer:'front', art:'coralbranch', power:0.8,
+               desc:'分叉的鹿角珊瑚，青蓝枝梢带品红。',
+               descEn:'Branching coral with cyan tips and magenta glow.'},
+  anemone:    {key:'anemone', name:'海葵', en:'ANEMONE', nameEn:'Anemone', shortEn:'Anemone', cat:'coral', price:180, stock:5, w:22, h:22, layer:'mid', art:'anemone', power:1.3,
+               desc:'触手轻摆的海葵，最能安抚鱼群。',
+               descEn:'Soft waving tentacles that calm the fish.'},
+  wreck:      {key:'wreck', name:'沉船残骸', en:'SHIPWRECK', nameEn:'Shipwreck', shortEn:'Wreck', cat:'prop', price:260, stock:3, w:56, h:38, layer:'back', art:'wreck',
+               desc:'半埋沙中的机械船骸，缝隙里长着发光苔。',
+               descEn:'Half-buried hull with glowing moss in its cracks.'},
+  mechcore:   {key:'mechcore', name:'机械核心', en:'MECH CORE', nameEn:'Mech Core', shortEn:'Mech Core', cat:'prop', price:300, stock:3, w:30, h:32, layer:'back', art:'mechcore',
+               desc:'仍在脉动的旧时代核心，青蓝辉光。',
+               descEn:'An old core still pulsing with cyan light.'},
+  shells:     {key:'shells', name:'贝壳堆', en:'SHELL PILE', nameEn:'Shell Pile', shortEn:'Shells', cat:'prop', price:70, stock:10, w:28, h:10, layer:'front', art:'shells',
+               desc:'散落的小贝壳，适合放在前景边角。',
+               descEn:'Scattered shells for the front corners.'},
+  bubble:     {key:'bubble', name:'气泡石', en:'BUBBLE STONE', nameEn:'Bubble Stone', shortEn:'Bubble', cat:'prop', price:120, stock:8, w:22, h:14, layer:'mid', art:'bubble',
+               desc:'持续冒泡，让每轮收益提高 6%。',
+               descEn:'Keeps bubbling, +6% income each payout.'},
+  neonsign:   {key:'neonsign', name:'霓虹招牌', en:'NEON SIGN', nameEn:'Neon Sign', shortEn:'Neon Sign', cat:'prop', price:220, stock:4, w:20, h:34, layer:'back', art:'neonsign',
+               desc:'旧街区的霓虹小招牌，青蓝与品红交替闪。',
+               descEn:'Old street sign flickering cyan and magenta.'}
 };
 const DECOR_KEYS = Object.keys(DECOR);
 
@@ -1087,6 +1423,76 @@ const dcLayerName = document.getElementById('dcLayerName');
 const btnRotate = document.getElementById('btnRotate');
 const btnRefund = document.getElementById('btnRefund');
 const shopTabsEl = document.getElementById('shopTabs');
+const dcTitleEl = document.getElementById('dcTitle');
+
+/* =========================================================
+   语言应用：只改文案，不碰 state 里的任何战局字段
+   ========================================================= */
+let startNote = null;   // 开始面板底部提示：{kind:'rescue'|'resume', left, granted}
+
+function updateStartButton(){
+  const btn = document.getElementById('btnStart');
+  if(!btn) return;
+  btn.textContent = rescuePending ? T('start.rescue') : (resumeData ? T('start.continue') : T('start.enter'));
+}
+
+function renderStartNote(){
+  const note = document.getElementById('saveNote');
+  if(!note) return;
+  let text = '';
+  if(!storageOk){
+    text = T('note.noStore');
+  } else if(startNote){
+    if(startNote.kind === 'rescue'){
+      text = T('note.rescue', startNote.left) + (startNote.granted ? T('note.rescueGift') : '');
+    } else if(startNote.kind === 'resume'){
+      text = T('note.resume');
+    }
+  }
+  if(text){ note.textContent = text; note.classList.add('show'); }
+  else{ note.textContent = ''; note.classList.remove('show'); }
+}
+
+function applyLang(){
+  document.documentElement.lang = isEn() ? 'en' : 'zh-CN';
+  document.body.classList.toggle('lang-en', isEn());
+  document.title = T('doc.title');
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    const k = el.getAttribute('data-i18n');
+    const v = T(k);
+    if(v !== k) el.textContent = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(function(el){
+    const k = el.getAttribute('data-i18n-html');
+    const v = T(k);
+    if(v !== k) el.innerHTML = v;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el){
+    const v = T(el.getAttribute('data-i18n-title'));
+    el.title = v;
+    el.setAttribute('aria-label', v);
+  });
+  const hudBtn = document.getElementById('btnLang');
+  if(hudBtn){
+    hudBtn.querySelectorAll('span[data-l]').forEach(function(s){
+      s.classList.toggle('on', s.dataset.l === lang);
+    });
+  }
+  document.querySelectorAll('#langPick button[data-lang]').forEach(function(b){
+    b.classList.toggle('on', b.dataset.lang === lang);
+  });
+  updateStartButton();
+  renderStartNote();
+  updateHUD();
+  renderShopTab();
+  refreshDecorUI();
+}
+
+function setLang(l){
+  lang = (l === 'en') ? 'en' : 'zh';
+  try{ localStorage.setItem(LANG_KEY, lang); }catch(e){}
+  applyLang();
+}
 
 /* 像素方块绘制，全部对齐整数像素 */
 function px(x,y,w,h,c,g){
@@ -1836,7 +2242,7 @@ class Fish{
     this.risk = 1;
     burst(this.x, this.y, 8, '#cfe8d8', 16, 0.6);
     Sfx.tone(320, 0.4, 'triangle', 0.07, 180);
-    toast(this.species.name + ' 生病了 · 买鱼药治疗');
+    toast(T('toast.fishSick', spLabel(this.species)));
   }
 
   cure(){
@@ -1855,9 +2261,9 @@ class Fish{
     this.cause = cause;
     burst(this.x, this.y, 14, cause === 'old' ? '#d8c8a8' : '#9fb4c8', 26, 0.9);
     Sfx.tone(cause === 'old' ? 240 : 150, 0.55, 'sawtooth', 0.10, cause === 'old' ? 110 : 55);
-    if(cause === 'old') toast(this.species.name + ' 寿终正寝');
-    else if(cause === 'sick') toast(this.species.name + ' 病逝了');
-    else toast(this.species.name + ' 死去了');
+    if(cause === 'old') toast(T('toast.diedOld', spLabel(this.species)));
+    else if(cause === 'sick') toast(T('toast.diedSick', spLabel(this.species)));
+    else toast(T('toast.died', spLabel(this.species)));
   }
 
   update(dt){
@@ -2100,6 +2506,7 @@ function resetGame(resetDecor){
   state.algaeTimer = 45;
   state.hudAcc = 0;
   state.overPending = false;
+  state.overTimer = 0;
   wipeAt = 0;
   rescuePending = false;
   rescueGranted = false;
@@ -2163,7 +2570,7 @@ function showSaveWarn(){
   if(el) el.classList.add('on');
   if(!saveWarned){
     saveWarned = true;
-    toast('进度未保存 · 存储空间已满');
+    toast(T('toast.saveWarn'));
   }
 }
 
@@ -2398,14 +2805,13 @@ function initGameSave(){
       rescuePending = true;
       rescueGranted = granted;
       state.phase = 'start';
-      const btn = document.getElementById('btnStart');
-      if(btn) btn.textContent = '抢 救 鱼 缸';
-      const note = document.getElementById('saveNote');
-      if(note){
-        note.textContent = '鱼缸刚覆没 · 继续可抢救（还剩 ' + Math.max(0, Math.ceil(RESCUE_WINDOW - elapsed)) + ' 秒）'
-          + (granted ? ' · 附赠 1 瓶鱼药' : '');
-        note.classList.add('show');
-      }
+      startNote = {
+        kind:'rescue',
+        left:Math.max(0, Math.ceil(RESCUE_WINDOW - elapsed)),
+        granted:granted
+      };
+      updateStartButton();
+      renderStartNote();
       return 'rescue';
     }
     // 超过抢救窗口：按判死处理，鱼不回来
@@ -2423,10 +2829,9 @@ function initGameSave(){
 
   applyGameSave(resumeData);
   state.phase = 'start';
-  const btn = document.getElementById('btnStart');
-  if(btn) btn.textContent = '继 续 鱼 缸';
-  const note = document.getElementById('saveNote');
-  if(note) note.classList.add('show');
+  startNote = {kind:'resume'};
+  updateStartButton();
+  renderStartNote();
   return true;
 }
 
@@ -2456,11 +2861,11 @@ function settleIncome(){
   state.money += total;
   state.earned += total;
   if(total > 0){
-    toast('收益到账 +¥' + total);
+    toast(T('toast.income', total));
     Sfx.tone(880, 0.09, 'sine', 0.07);
     setTimeout(()=>{ if(Sfx.on) Sfx.tone(1180, 0.12, 'sine', 0.06); }, 90);
   } else {
-    toast('本次没有收益 · 鱼都病倒了');
+    toast(T('toast.noIncome'));
   }
   updateHUD();
   refreshShop();
@@ -2471,7 +2876,7 @@ function settleIncome(){
    商店
    ========================================================= */
 function hardinessLabel(h){
-  return h < 0.55 ? '弱' : (h < 0.75 ? '中' : '强');
+  return h < 0.55 ? T('hardy.weak') : (h < 0.75 ? T('hardy.mid') : T('hardy.strong'));
 }
 
 function buildShop(){
@@ -2489,57 +2894,60 @@ function buildShop(){
 }
 
 function fishCardHTML(sp){
+  const ce = isEn() ? '' : '<div class="ce">' + sp.en + '</div>';
   return '<div class="card">' +
     '<div class="cardTop">' +
       '<canvas class="prev" width="56" height="32" data-key="' + sp.key + '"></canvas>' +
-      '<div class="cardName"><div class="cn">' + sp.name + '</div><div class="ce">' + sp.en + '</div></div>' +
+      '<div class="cardName"><div class="cn">' + spLabel(sp) + '</div>' + ce + '</div>' +
       '<div class="cprice">¥' + sp.price + '</div>' +
     '</div>' +
     '<div class="cmeta">' +
-      '<span>寿命 ' + (sp.lifespan/3600).toFixed(0) + 'h</span>' +
-      '<span>体质 ' + hardinessLabel(sp.hardiness) + '</span>' +
-      '<span>收益 ' + sp.income + '</span>' +
+      '<span>' + T('shop.life', (sp.lifespan/3600).toFixed(0)) + '</span>' +
+      '<span>' + T('shop.hardy', hardinessLabel(sp.hardiness)) + '</span>' +
+      '<span>' + T('shop.income', sp.income) + '</span>' +
     '</div>' +
-    '<div class="cdesc">' + sp.desc + '</div>' +
-    '<button class="buyBtn" data-buy="' + sp.key + '">购 买</button>' +
+    '<div class="cdesc">' + (isEn() && sp.descEn ? sp.descEn : sp.desc) + '</div>' +
+    '<button class="buyBtn" data-buy="' + sp.key + '">' + T('shop.buy') + '</button>' +
   '</div>';
 }
 
 function potionCardHTML(){
+  const ce = isEn() ? '' : '<div class="ce">' + T('shop.potionEn') + '</div>';
   return '<div class="card">' +
     '<div class="cardTop">' +
       '<div class="bottle"><i></i></div>' +
-      '<div class="cardName"><div class="cn">鱼药</div><div class="ce">MEDICINE</div></div>' +
+      '<div class="cardName"><div class="cn">' + T('shop.potionName') + '</div>' + ce + '</div>' +
       '<div class="cprice">¥' + POTION.price + '</div>' +
     '</div>' +
-    '<div class="cmeta"><span id="potionOwn">持有 0</span><span>治愈一条病鱼</span></div>' +
-    '<div class="cdesc">按 Q 进入治疗模式，点生病的鱼使用。拖得越久越危险。</div>' +
-    '<button class="buyBtn" data-buy="potion">购 买</button>' +
+    '<div class="cmeta"><span id="potionOwn">' + T('shop.potionOwn', state.potions) + '</span><span>' + T('shop.potionCure') + '</span></div>' +
+    '<div class="cdesc">' + T('shop.potionDesc') + '</div>' +
+    '<button class="buyBtn" data-buy="potion">' + T('shop.buy') + '</button>' +
   '</div>';
 }
 
 function decorCardHTML(def){
-  let effect = '纯装饰';
+  let effect = T('shop.pure');
   if(def.cat === 'plant'){
-    effect = '水质 +' + (DECOR_TUNING.plantWater * (def.power || 1)).toFixed(4) + '/s';
+    effect = T('shop.waterFx', (DECOR_TUNING.plantWater * (def.power || 1)).toFixed(4));
   } else if(def.cat === 'coral'){
-    effect = '病害 -' + Math.round(DECOR_TUNING.coralSick * (def.power || 1) * 100) + '%';
+    effect = T('shop.sickFx', Math.round(DECOR_TUNING.coralSick * (def.power || 1) * 100));
   } else if(def.key === 'bubble'){
-    effect = '收益 +' + Math.round(DECOR_TUNING.bubbleIncome * 100) + '%';
+    effect = T('shop.incomeFx', Math.round(DECOR_TUNING.bubbleIncome * 100));
   }
+  const ce = isEn() ? '' : '<div class="ce">' + def.en + '</div>';
   return '<div class="card">' +
     '<div class="cardTop">' +
       '<canvas class="prev" width="56" height="40" data-decor-prev="' + def.key + '"></canvas>' +
-      '<div class="cardName"><div class="cn">' + def.name + '</div><div class="ce">' + def.en + '</div></div>' +
+      '<div class="cardName"><div class="cn">' + decorLabel(def.key) + '</div>' + ce + '</div>' +
       '<div class="cprice">¥' + def.price + '</div>' +
     '</div>' +
     '<div class="cmeta">' +
-      '<span>库存 <b class="stockTag" data-stock="' + def.key + '">' + (state.shopStock[def.key] || 0) + '</b></span>' +
-      '<span>持有 <b data-own="' + def.key + '">' + (state.decorInv[def.key] || 0) + '</b></span>' +
+      '<span>' + T('shop.stock') + ' <b class="stockTag" data-stock="' + def.key + '">' + (state.shopStock[def.key] || 0) + '</b></span>' +
+      '<span>' + T('shop.own') + ' <b data-own="' + def.key + '">' + (state.decorInv[def.key] || 0) + '</b></span>' +
       '<span>' + effect + '</span>' +
     '</div>' +
-    '<div class="cdesc">' + def.desc + '</div>' +
-    '<button class="buyBtn" data-buydecor="' + def.key + '">购 买</button>' +
+    '<div class="cdesc">' + (isEn() && def.descEn ? def.descEn : def.desc) + '</div>' +
+    '<button class="buyBtn" data-buydecor="' + def.key + '">' + T('shop.buy') + '</button>' +
   '</div>';
 }
 
@@ -2549,7 +2957,7 @@ function renderShopTab(){
   const title = document.getElementById('shopTitle');
   if(title){
     const cat = DECOR_CATS.find(function(c){ return c.key === tab; });
-    title.textContent = tab === 'fish' ? '补 给' : (cat ? cat.name : '补 给');
+    title.textContent = tab === 'fish' ? T('shop.title') : (cat ? (isEn() ? cat.en : cat.name) : T('shop.title'));
   }
   const parts = [];
   if(tab === 'fish'){
@@ -2613,14 +3021,14 @@ function refreshShop(){
     const price = key === 'potion' ? POTION.price : SPECIES[key].price;
     const full = key !== 'potion' && n >= TUNING.capacity;
     btn.disabled = state.money < price || full;
-    btn.textContent = full ? '鱼 缸 满 了' : (state.money < price ? '钱 不 够' : '购 买');
+    btn.textContent = full ? T('shop.tankFull') : (state.money < price ? T('shop.noMoney') : T('shop.buy'));
   });
   shopGrid.querySelectorAll('[data-buydecor]').forEach(function(btn){
     const key = btn.dataset.buydecor;
     const def = DECOR[key];
     const stock = state.shopStock[key] || 0;
     btn.disabled = stock <= 0 || state.money < def.price;
-    btn.textContent = stock <= 0 ? '已 售 罄' : (state.money < def.price ? '钱 不 够' : '购 买');
+    btn.textContent = stock <= 0 ? T('shop.soldOut') : (state.money < def.price ? T('shop.noMoney') : T('shop.buy'));
     const st = shopGrid.querySelector('[data-stock="' + key + '"]');
     if(st){ st.textContent = stock; st.classList.toggle('b0', stock <= 0); }
     const ow = shopGrid.querySelector('[data-own="' + key + '"]');
@@ -2628,28 +3036,28 @@ function refreshShop(){
   });
 
   const own = document.getElementById('potionOwn');
-  if(own) own.textContent = '持有 ' + state.potions;
+  if(own) own.textContent = T('shop.potionOwn', state.potions);
 }
 
 function buy(key){
   if(state.phase !== 'play') return;
   Sfx.init();
   if(key === 'potion'){
-    if(state.money < POTION.price){ toast('钱不够'); return; }
+    if(state.money < POTION.price){ toast(T('toast.noMoney')); return; }
     state.money -= POTION.price;
     state.potions++;
-    toast('买到一瓶鱼药 · 按 Q 使用');
+    toast(T('toast.boughtPotion'));
     Sfx.tone(720, 0.09, 'square', 0.06);
   } else {
     const sp = SPECIES[key];
-    if(aliveFish().length >= TUNING.capacity){ toast('鱼缸满了 · 等鱼离开后再买'); return; }
-    if(state.money < sp.price){ toast('钱不够'); return; }
+    if(aliveFish().length >= TUNING.capacity){ toast(T('toast.tankFull')); return; }
+    if(state.money < sp.price){ toast(T('toast.noMoney')); return; }
     state.money -= sp.price;
     const f = new Fish(key, rand(VW*0.3, VW*0.7), SURF_Y + rand(0.25, 0.55)*(FLOOR_Y - SURF_Y), {age:0});
     state.fish.push(f);
     burst(f.x, f.y, 12, sp.pal.light, 22, 0.7);
     Sfx.tone(660, 0.1, 'square', 0.06, 990);
-    toast(sp.name + ' 入缸了');
+    toast(T('toast.fishIn', spLabel(sp)));
   }
   updateHUD();
   refreshShop();
@@ -2661,14 +3069,14 @@ function buyDecor(key){
   Sfx.init();
   const def = DECOR[key];
   if(!def) return;
-  if((state.shopStock[key] || 0) <= 0){ toast('这件造景已经卖完了'); return; }
-  if(state.money < def.price){ toast('钱不够'); return; }
+  if((state.shopStock[key] || 0) <= 0){ toast(T('toast.soldOut')); return; }
+  if(state.money < def.price){ toast(T('toast.noMoney')); return; }
   state.money -= def.price;
   state.shopStock[key] = Math.max(0, (state.shopStock[key] || 0) - 1);
   state.decorInv[key] = (state.decorInv[key] || 0) + 1;
   saveDecor();
   Sfx.tone(680, 0.09, 'square', 0.06, 900);
-  toast('买到 ' + def.name + ' · 按 D 拖入鱼缸');
+  toast(T('toast.boughtDecor', decorLabel(key)));
   updateHUD();
   refreshShop();
   saveGame();
@@ -2784,6 +3192,8 @@ function initDecor(){
         seed:+d.seed || 0
       };
     });
+    // 结构合法但内容全无效（未知 key / null）：视同坏档，回退默认造景，避免留下空缸
+    if(!state.decorPlaced.length) buildDefaultDecor();
     if(saved.inv && typeof saved.inv === 'object'){
       for(const key of DECOR_KEYS){
         if(typeof saved.inv[key] === 'number') state.decorInv[key] = Math.max(0, saved.inv[key]|0);
@@ -2824,7 +3234,7 @@ function decorAt(x, y){
 function placeDecor(key, x, y, layer){
   const def = DECOR[key];
   if(!def || !(state.decorInv[key] > 0)){
-    toast('库存不足 · 先去商店购买');
+    toast(T('toast.noStock'));
     state.decorArmed = null;
     refreshDecorUI();
     return;
@@ -2847,12 +3257,12 @@ function placeDecor(key, x, y, layer){
   refreshDecorUI();
   burst(d.x, d.y-4, 7, '#7ff2ff', 14, 0.5);
   Sfx.tone(760, 0.08, 'square', 0.05, 980);
-  toast(def.name + ' 已放入 · 拖动调整位置');
+  toast(T('toast.placed', decorLabel(key)));
 }
 
 function rotateDecor(){
   if(!state.decorMode) return;
-  if(!state.decorSel){ toast('先选中一个造景物'); return; }
+  if(!state.decorSel){ toast(T('toast.pickFirst')); return; }
   state.decorSel.rot = ((state.decorSel.rot || 0) + 1) % 4;
   saveDecor();
   Sfx.tone(700, 0.06, 'square', 0.04);
@@ -2873,7 +3283,7 @@ function refundDecor(){
   refreshShop();
   refreshDecorUI();
   Sfx.tone(520, 0.1, 'triangle', 0.06, 380);
-  toast('已回收 ' + def.name + ' · 返还 ¥' + back);
+  toast(T('toast.refunded', decorLabel(d.key), back));
 }
 
 function setDecorLayer(layer){
@@ -2894,7 +3304,7 @@ function toggleDecor(){
     state.treatMode = false;
     btnClean.classList.remove('active');
     btnTreat.classList.remove('active');
-    toast('造景模式 · 从库存拖入鱼缸，拖动物件调整位置');
+    toast(T('toast.decorOn'));
     Sfx.tone(640, 0.1, 'square', 0.05, 860);
   } else {
     state.decorArmed = null;
@@ -2925,9 +3335,9 @@ function paintInvPreview(c, key){
 
 function refreshDecorUI(){
   if(!decorInvEl) return;
-  const names = {back:'背景', mid:'中景', front:'前景'};
+  const names = {back:layerLabel('back'), mid:layerLabel('mid'), front:layerLabel('front')};
   const curLayer = state.decorSel ? state.decorSel.layer : state.decorLayer;
-  if(dcLayerName) dcLayerName.textContent = names[curLayer];
+  if(dcLayerName) dcLayerName.textContent = names[curLayer] || names.mid;
   const layerBtns = document.querySelectorAll('#layerBtns [data-layer]');
   layerBtns.forEach(function(b){ b.classList.toggle('on', b.dataset.layer === curLayer); });
 
@@ -2938,7 +3348,7 @@ function refreshDecorUI(){
       '<div class="invItem' + (n <= 0 ? ' empty' : '') + (state.decorArmed === key ? ' armed' : '') + '" data-key="' + key + '">' +
         '<span class="qt">×' + n + '</span>' +
         '<canvas width="40" height="34" data-inv-prev="' + key + '"></canvas>' +
-        '<div class="nm">' + DECOR[key].name + '</div>' +
+        '<div class="nm">' + decorShort(key) + '</div>' +
       '</div>'
     );
   }
@@ -2949,17 +3359,17 @@ function refreshDecorUI(){
 
   if(state.decorSel && DECOR[state.decorSel.key]){
     const def = DECOR[state.decorSel.key];
-    selTagEl.textContent = '已选 ' + def.name + ' · 拖动调整位置';
+    selTagEl.textContent = T('decor.selected', decorLabel(def.key));
     btnRotate.disabled = false;
     btnRefund.disabled = false;
-    btnRefund.textContent = '回 收 ¥' + Math.round(def.price * DECOR_TUNING.refundRate);
+    btnRefund.textContent = T('decor.refundAmt', Math.round(def.price * DECOR_TUNING.refundRate));
   } else {
     selTagEl.textContent = state.decorArmed
-      ? ('待放置 ' + DECOR[state.decorArmed].name + ' · 点鱼缸放下')
-      : '未选中物件 · 从库存拖入鱼缸';
+      ? T('decor.placing', decorLabel(state.decorArmed))
+      : T('decor.selNone');
     btnRotate.disabled = true;
     btnRefund.disabled = true;
-    btnRefund.textContent = '回 收';
+    btnRefund.textContent = T('decor.refund');
   }
 
   let pc = 0, cc = 0, bc = 0;
@@ -2972,10 +3382,10 @@ function refreshDecorUI(){
   }
   const fx = decorEffects();
   const bits = [];
-  if(pc) bits.push('植物 ' + pc + ' · 水质 +' + (fx.water*3600).toFixed(2) + '/h');
-  if(cc) bits.push('珊瑚 ' + cc + ' · 病害 -' + Math.round(fx.coral*100) + '%');
-  if(bc) bits.push('气泡石 ' + bc + ' · 收益 +' + Math.round(fx.income*100) + '%');
-  decorFxEl.innerHTML = bits.length ? bits.join('　') : '造景加成：<b>无</b>';
+  if(pc) bits.push(T('decor.plantFx', pc, (fx.water*3600).toFixed(2)));
+  if(cc) bits.push(T('decor.coralFx', cc, Math.round(fx.coral*100)));
+  if(bc) bits.push(T('decor.bubbleFx', bc, Math.round(fx.income*100)));
+  decorFxEl.innerHTML = bits.length ? bits.join('　') : T('decor.bonusNone');
 }
 
 /* 造景绘制 */
@@ -3039,12 +3449,12 @@ function drawDecorEdit(){
 function toggleTreat(){
   if(state.phase !== 'play') return;
   if(state.decorMode) toggleDecor();
-  if(state.potions <= 0){ toast('没有鱼药 · 去商店买一瓶'); return; }
+  if(state.potions <= 0){ toast(T('toast.noPotion')); return; }
   state.treatMode = !state.treatMode;
   if(state.treatMode){
     state.cleanMode = false;
     btnClean.classList.remove('active');
-    toast('治疗模式 · 点生病的鱼');
+    toast(T('toast.treatOn'));
   }
   btnTreat.classList.toggle('active', state.treatMode);
   Sfx.tone(state.treatMode ? 760 : 420, 0.08, 'square', 0.06);
@@ -3056,7 +3466,7 @@ function cureFish(f){
   f.cure();
   burst(f.x, f.y, 14, '#7dff9b', 24, 0.7);
   Sfx.tone(880, 0.12, 'sine', 0.07, 1320);
-  toast(f.species.name + ' 治好了');
+  toast(T('toast.cured', spLabel(f.species)));
   if(state.potions <= 0){
     state.treatMode = false;
     btnTreat.classList.remove('active');
@@ -3080,11 +3490,11 @@ function fishAt(x, y){
 function showFishInfo(f){
   const life = Math.round(f.lifeFrac()*100);
   let st;
-  if(f.sick) st = '生病 ' + Math.round(f.sev*100) + '%';
-  else if(life > 78) st = '年老';
-  else if(f.fullness < 15) st = '很饿';
-  else st = '状态良好';
-  toast(f.species.name + ' · 寿命 ' + life + '% · ' + st);
+  if(f.sick) st = T('fish.sick', Math.round(f.sev*100));
+  else if(life > 78) st = T('fish.old');
+  else if(f.fullness < 15) st = T('fish.hungry');
+  else st = T('fish.ok');
+  toast(T('fish.info', spLabel(f.species), life, st));
 }
 
 function dropFood(x){
@@ -3245,19 +3655,22 @@ function updateSim(dt){
   const aliveN = aliveFish().length;
   if(aliveN > 0 && state.overPending){
     state.overPending = false;
+    state.overTimer = 0;
     wipeAt = 0;
     // 判死期间买鱼救回来了：立刻把覆没记录改回正常进度
     saveGame();
   }
   if(aliveN === 0 && !state.overPending){
     state.overPending = true;
+    state.overTimer = 0;
     wipeAt = Date.now();
     // 全灭瞬间就落盘判死状态，刷新页面不能免费复活
     saveWipedRecord();
-    setTimeout(()=>{
-      // 1.7 秒内可能买鱼或有新鱼入缸，落判前再确认一次
-      if(state.phase === 'play' && state.overPending && aliveFish().length === 0) gameOver();
-    }, 1700);
+  }
+  // 用 tick 内的累计时间判死：页面切到后台时 rAF 会暂停，不依赖墙钟计时器
+  if(state.overPending){
+    state.overTimer += dt;
+    if(state.overTimer >= 1.7 && aliveFish().length === 0) gameOver();
   }
 }
 
@@ -3280,7 +3693,7 @@ function updateHUD(){
   vIncome.textContent = fmtTime(Math.max(0, state.incomeT));
 
   const sickN = alive.filter(f=>f.sick).length;
-  sickCountEl.textContent = sickN ? '病 ' + sickN : '';
+  sickCountEl.textContent = sickN ? T('hud.sick', sickN) : '';
   sickCountEl.classList.toggle('on', sickN > 0);
 
   btnTreat.disabled = state.potions <= 0 || state.phase !== 'play';
@@ -3339,10 +3752,10 @@ function startGame(){
     state.phase = 'play';
     if(rescuePending){
       rescuePending = false;
-      toast(rescueGranted ? '鱼缸刚覆没 · 附赠 1 瓶鱼药 · 用药抢救' : '鱼缸刚覆没 · 鱼正病危 · 买鱼药抢救');
+      toast(rescueGranted ? T('toast.rescueGift') : T('toast.rescueBuy'));
       rescueGranted = false;
     } else {
-      toast('已从存档继续 · 离线期间不结算');
+      toast(T('toast.resumed'));
     }
   } else {
     resetGame();
@@ -3835,8 +4248,8 @@ cv.addEventListener('pointerdown', function(e){
   if(state.treatMode){
     const f = fishAt(p.x, p.y);
     if(f && f.sick) cureFish(f);
-    else if(f) toast('这条鱼没生病');
-    else toast('点一下生病的鱼');
+    else if(f) toast(T('toast.notSick'));
+    else toast(T('toast.tapSick'));
   } else if(state.cleanMode){
     scrub(p.x, p.y);
   } else {
@@ -3885,7 +4298,7 @@ window.addEventListener('pointerup', function(e){
     if(inside && state.decorArmed){
       placeDecor(state.decorArmed, p.x, Math.min(p.y, FLOOR_Y), state.decorLayer);
     } else if(state.decorArmed){
-      toast('把物件拖进鱼缸，或点鱼缸放下');
+      toast(T('toast.dragIn'));
       refreshDecorUI();
     }
     state.invDrag = null;
@@ -3912,9 +4325,8 @@ decorInvEl.addEventListener('pointerdown', function(e){
   decorInvEl.querySelectorAll('.invItem').forEach(function(x){
     x.classList.toggle('armed', x === item);
   });
-  if(selTagEl) selTagEl.textContent = '待放置 ' + DECOR[key].name + ' · 点鱼缸放下';
-  const names = {back:'背景', mid:'中景', front:'前景'};
-  if(dcLayerName) dcLayerName.textContent = names[state.decorLayer];
+  if(selTagEl) selTagEl.textContent = T('decor.placing', decorLabel(key));
+  if(dcLayerName) dcLayerName.textContent = layerLabel(state.decorLayer);
   document.querySelectorAll('#layerBtns [data-layer]').forEach(function(b){
     b.classList.toggle('on', b.dataset.layer === state.decorLayer);
   });
@@ -3934,7 +4346,7 @@ function toggleClean(){
   }
   btnClean.classList.toggle('active', state.cleanMode);
   Sfx.tone(state.cleanMode ? 720 : 420, 0.08, 'square', 0.06);
-  if(state.cleanMode) toast('清洁模式 · 拖动海绵擦掉藻斑');
+  if(state.cleanMode) toast(T('toast.cleanOn'));
 }
 
 btnFeed.addEventListener('click', function(){
@@ -4011,6 +4423,14 @@ document.getElementById('btnSound').addEventListener('click', function(){
   this.style.color = Sfx.on ? '' : '#3d5c6e';
 });
 
+/* 语言切换：游戏内 HUD 与开始面板共用同一状态 */
+document.getElementById('btnLang').addEventListener('click', function(){
+  setLang(isEn() ? 'zh' : 'en');
+});
+document.querySelectorAll('#langPick button[data-lang]').forEach(function(b){
+  b.addEventListener('click', function(){ setLang(b.dataset.lang); });
+});
+
 /* 切到后台 / 关闭页面时立即落盘 */
 document.addEventListener('visibilitychange', function(){
   if(document.hidden) saveGame();
@@ -4029,18 +4449,11 @@ buildShop();
 resetGame(false); // 启动时保留已读出的造景存档
 const initState = initGameSave();
 if(initState !== 'over') state.phase = 'start';
-if(!storageOk){
-  // 无痕 / 禁用站点数据：本次进度无法保存，只在启动时提示一次
-  const note = document.getElementById('saveNote');
-  if(note){
-    note.textContent = '本次进度不会保存 · 浏览器禁用了站点数据';
-    note.classList.add('show');
-  }
-}
 resize();
 updateHUD();
 refreshShop();
 refreshDecorUI();
+applyLang();   // 按已保存语言刷新全部文案（含开始面板语言按钮高亮）
 
 const bestInit = (function(){
   try{ return parseFloat(localStorage.getItem(STORAGE_KEY) || '0') || 0; }catch(e){ return 0; }
