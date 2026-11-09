@@ -109,6 +109,8 @@
   .meta .clock{font-size:14px;letter-spacing:1px;color:#cfc2ae;text-shadow:0 0 8px rgba(255,179,80,.22)}
   .meta .sickcount{font-size:8px;letter-spacing:1px;color:transparent}
   .meta .sickcount.on{color:var(--danger);text-shadow:0 0 8px rgba(255,92,92,.6)}
+  .meta .savewarn{display:none;font-size:8px;letter-spacing:1px;color:var(--danger);text-shadow:0 0 8px rgba(255,92,92,.6)}
+  .meta .savewarn.on{display:inline}
   #btnSound{
     appearance:none;flex:0 0 18px;width:18px;height:18px;
     display:inline-flex;align-items:center;justify-content:center;
@@ -453,6 +455,7 @@
         <span class="income"><span class="lb">结算</span><b id="vIncome">05:00</b></span>
       </div>
       <div class="metarow">
+        <span class="savewarn" id="saveWarn">进度未保存</span>
         <span class="fishcount">FISH <b id="fishCount">3</b>/<span id="capCount">6</span></span>
         <span class="sickcount" id="sickCount"></span>
         <span class="clock" id="clock">00:00</span>
@@ -640,14 +643,20 @@ const SPECIES_ALIAS = {
   '斗鱼':'betta', '泰国斗鱼':'betta',
   '霓虹灯鱼':'neon', '孔雀鱼':'guppy', '神仙鱼':'angel', '七彩神仙':'discus'
 };
+/* 只认对象自身属性，避免 __proto__ / constructor 之类原型链键名被当成有效条目 */
+function ownVal(obj, key){
+  return Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : null;
+}
 function resolveSpecies(key){
   if(!key) return null;
   const raw = String(key).trim();
-  if(SPECIES[raw]) return SPECIES[raw];
+  const exact = ownVal(SPECIES, raw);
+  if(exact) return exact;
   const low = raw.toLowerCase();
-  if(SPECIES[low]) return SPECIES[low];
-  const k = SPECIES_ALIAS[raw] || SPECIES_ALIAS[low];
-  return k ? SPECIES[k] : null;
+  const lower = ownVal(SPECIES, low);
+  if(lower) return lower;
+  const alias = ownVal(SPECIES_ALIAS, raw) || ownVal(SPECIES_ALIAS, low);
+  return alias ? ownVal(SPECIES, alias) : null;
 }
 const POTION = { key:'potion', name:'鱼药', price:80 };
 
@@ -2064,7 +2073,7 @@ const STORAGE_KEY = 'cyber-aquarium-best';
 
 function aliveFish(){ return state.fish.filter(f=>f.alive); }
 
-function resetGame(){
+function resetGame(resetDecor){
   state.t = 0;
   state.time = 0;
   state.water = 100;
@@ -2091,11 +2100,23 @@ function resetGame(){
   state.algaeTimer = 45;
   state.hudAcc = 0;
   state.overPending = false;
+  wipeAt = 0;
+  rescuePending = false;
+  rescueGranted = false;
   state.decorMode = false;
   state.decorSel = null;
   state.decorArmed = null;
   state.decorDrag = null;
   state.invDrag = null;
+  if(resetDecor !== false){
+    // 重新开始：造景回到默认「霓虹礁盘」，库存与商店剩余量也回到初始
+    buildDefaultDecor();
+    state.decorInv = {seaweed:1, moss:1, pebble:2};
+    state.shopStock = {};
+    for(const key of DECOR_KEYS) state.shopStock[key] = DECOR[key].stock;
+    state.decorLayer = 'mid';
+    saveDecor();
+  }
   state.fx = decorEffects();
   pointer.down = false;
   btnClean.classList.remove('active');
@@ -2115,10 +2136,97 @@ function resetGame(){
    ========================================================= */
 const GAME_KEY = 'cyber-aquarium-save';
 let resumeData = null;
+const RESCUE_WINDOW = 60;     // 全缸覆没后 60 秒内重开可以抢救
+let storageOk = true;         // 启动探测：localStorage 是否可写
+let saveWarned = false;       // “进度未保存”只提示一次
+let wipeAt = 0;               // 本次覆没发生的时间戳（毫秒）
+let rescuePending = false;    // 开始面板当前是否处于抢救状态
+let rescueGranted = false;    // 本次抢救是否附赠了鱼药
 
 function saveNum(v, d){
   v = +v;
   return isFinite(v) ? v : d;
+}
+
+/* 启动探测：无痕模式 / 禁用站点数据时 localStorage 写入会直接抛错 */
+function storageProbe(){
+  try{
+    const k = '__aqua_probe__';
+    localStorage.setItem(k, '1');
+    localStorage.removeItem(k);
+    return true;
+  }catch(e){ return false; }
+}
+
+function showSaveWarn(){
+  const el = document.getElementById('saveWarn');
+  if(el) el.classList.add('on');
+  if(!saveWarned){
+    saveWarned = true;
+    toast('进度未保存 · 存储空间已满');
+  }
+}
+
+/* 写入失败时先丢掉最高纪录腾地方，再重试一次；仍失败就点亮 HUD 角标 */
+function writeStore(key, str){
+  try{
+    localStorage.setItem(key, str);
+    return true;
+  }catch(e){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(_){}
+    try{
+      localStorage.setItem(key, str);
+      return true;
+    }catch(e2){
+      showSaveWarn();
+      return false;
+    }
+  }
+}
+
+/* 鱼群序列化（整局存档与覆没记录共用） */
+function fishSaveList(list){
+  return list.map(function(f){
+    return {
+      key:f.key,
+      fx:+(clamp(f.x, 0, VW) / VW).toFixed(4),
+      fy:+(clamp((f.y - SURF_Y) / Math.max(1, FLOOR_Y - SURF_Y))).toFixed(4),
+      scale:+f.scale.toFixed(2),
+      age:+f.age.toFixed(1),
+      fullness:+f.fullness.toFixed(1),
+      health:+f.health.toFixed(1),
+      sick:f.sick ? 1 : 0,
+      sev:+f.sev.toFixed(3),
+      risk:+f.risk.toFixed(3)
+    };
+  });
+}
+
+/* 藻斑 / 粪便 / 藻类计时器：刷新后脏污程度与生成节奏保持不变 */
+function dirtSave(){
+  const wtr = Math.max(1, FLOOR_Y - SURF_Y);
+  return {
+    algae:state.algae.map(function(a){
+      return {
+        fx:+(clamp(a.x, 0, VW) / VW).toFixed(4),
+        fy:+(clamp((a.y - SURF_Y) / wtr, 0, 1)).toFixed(4),
+        r:+a.r.toFixed(2),
+        pts:a.pts.map(function(p){
+          return {x:+p.x.toFixed(2), y:+p.y.toFixed(2), s:p.s, c:p.c};
+        })
+      };
+    }),
+    poops:state.poops.map(function(p){
+      return {
+        fx:+(clamp(p.x, 0, VW) / VW).toFixed(4),
+        fy:+(clamp((p.y - SURF_Y) / wtr, 0, 1)).toFixed(4),
+        vy:+p.vy.toFixed(1),
+        life:+p.life.toFixed(1),
+        rest:p.rest ? 1 : 0
+      };
+    }),
+    algaeTimer:+state.algaeTimer.toFixed(1)
+  };
 }
 
 function saveGame(){
@@ -2126,8 +2234,7 @@ function saveGame(){
   const alive = state.fish.filter(f=>f.alive);
   if(!alive.length) return;
   try{
-    const wtr = Math.max(1, FLOOR_Y - SURF_Y);
-    localStorage.setItem(GAME_KEY, JSON.stringify({
+    const payload = {
       v:2,
       time:+(state.time).toFixed(1),
       money:Math.max(0, Math.round(state.money)),
@@ -2136,22 +2243,57 @@ function saveGame(){
       incomeT:+state.incomeT.toFixed(1),
       potions:Math.max(0, state.potions|0),
       feedCd:+state.feedCd.toFixed(1),
-      fish:alive.map(function(f){
-        return {
-          key:f.key,
-          fx:+(clamp(f.x, 0, VW) / VW).toFixed(4),
-          fy:+(clamp((f.y - SURF_Y) / wtr, 0, 1)).toFixed(4),
-          scale:+f.scale.toFixed(2),
-          age:+f.age.toFixed(1),
-          fullness:+f.fullness.toFixed(1),
-          health:+f.health.toFixed(1),
-          sick:f.sick ? 1 : 0,
-          sev:+f.sev.toFixed(3),
-          risk:+f.risk.toFixed(3)
-        };
-      })
-    }));
-  }catch(e){}
+      fish:fishSaveList(alive)
+    };
+    Object.assign(payload, dirtSave());
+    writeStore(GAME_KEY, JSON.stringify(payload));
+  }catch(e){ showSaveWarn(); }
+}
+
+/* 全缸覆没：把判死状态和发生时间写进存档，60 秒内重开可以抢救 */
+function saveWipedRecord(){
+  try{
+    const payload = {
+      v:2,
+      wiped:1,
+      wipedAt:wipeAt || Date.now(),
+      time:+(state.time).toFixed(1),
+      money:Math.max(0, Math.round(state.money)),
+      earned:Math.max(0, Math.round(state.earned)),
+      water:+state.water.toFixed(2),
+      incomeT:+state.incomeT.toFixed(1),
+      potions:Math.max(0, state.potions|0),
+      feedCd:+state.feedCd.toFixed(1),
+      fish:fishSaveList(state.fish)
+    };
+    Object.assign(payload, dirtSave());
+    writeStore(GAME_KEY, JSON.stringify(payload));
+  }catch(e){ showSaveWarn(); }
+}
+
+/* 抢救：鱼以病危状态回来，低健康、带病、游得慢，需要鱼药才能恢复
+   同时至少附赠 1 瓶鱼药，已有更多则保持原数量 */
+function reviveAfterWipe(){
+  let granted = false;
+  if(state.potions < 1){
+    state.potions = 1;
+    granted = true;
+  }
+  for(const f of state.fish){
+    if(!f) continue;
+    f.alive = true;
+    f.deadT = 0;
+    f.cause = '';
+    f.health = rand(6, 12);
+    f.fullness = rand(18, 30);
+    f.sick = true;
+    f.sev = clamp(Math.max(f.sev, rand(0.35, 0.5)), 0, 0.8);
+    f.risk = 1;
+    f.speed = rand(4, 6);
+    f.vx = 0;
+    f.vy = 0;
+  }
+  return granted;
 }
 
 function readGameSave(){
@@ -2200,13 +2342,85 @@ function applyGameSave(s){
     f.risk = clamp(saveNum(d.risk, 0), 0, 1);
     return f;
   }).filter(Boolean);
+  // 恢复藻斑/粪便与藻类计时器；水中未吃完的散饵不保存，读档后照旧清空
+  state.algae = (Array.isArray(s.algae) ? s.algae : []).filter(function(d){
+    return d && typeof d === 'object';
+  }).slice(0, 12).map(function(d){
+    const r = clamp(saveNum(d.r, 6), 2, 14);
+    let pts = Array.isArray(d.pts) ? d.pts.filter(function(p){
+      return p && typeof p === 'object';
+    }).slice(0, 40).map(function(p){
+      return {
+        x:clamp(saveNum(p.x, 0), -20, 20),
+        y:clamp(saveNum(p.y, 0), -20, 20),
+        s:p.s === 2 ? 2 : 1,
+        c:p.c === '#7a9a4a' ? '#7a9a4a' : '#4a6a34'
+      };
+    }) : [];
+    if(!pts.length) pts = makeAlgaePts(r);
+    return {
+      x:clamp(saveNum(d.fx, 0.5), 0, 1) * VW,
+      y:SURF_Y + clamp(saveNum(d.fy, 0.5), 0, 1) * wtr,
+      r:r,
+      pts:pts
+    };
+  });
+  state.poops = (Array.isArray(s.poops) ? s.poops : []).filter(function(d){
+    return d && typeof d === 'object';
+  }).slice(0, 40).map(function(d){
+    const rest = !!d.rest;
+    return {
+      x:clamp(saveNum(d.fx, 0.5), 0, 1) * VW,
+      y:rest ? FLOOR_Y - 2 : SURF_Y + clamp(saveNum(d.fy, 0.9), 0, 1) * wtr,
+      vy:clamp(saveNum(d.vy, 9), 1, 40),
+      life:clamp(saveNum(d.life, 60), 0, 60),
+      rest:rest
+    };
+  });
+  state.algaeTimer = clamp(saveNum(s.algaeTimer, 45), 0.1, 170);
   state.fx = decorEffects();
 }
 
-/* 启动时读取存档并恢复画面，但仍停在开始面板 */
+/* 启动时读取存档并恢复画面，但仍停在开始面板
+   返回 'rescue'（可抢救）/ 'over'（已判死）/ true（普通续玩）/ false（无存档） */
 function initGameSave(){
   resumeData = readGameSave();
   if(!resumeData) return false;
+
+  if(resumeData.wiped){
+    const at = saveNum(resumeData.wipedAt, 0);
+    const elapsed = at > 0 ? (Date.now() - at) / 1000 : Infinity;
+    if(elapsed <= RESCUE_WINDOW){
+      // 刚覆没：鱼以病危状态回到缸里，点继续后需要用药抢救
+      applyGameSave(resumeData);
+      const granted = reviveAfterWipe();
+      wipeAt = at;
+      rescuePending = true;
+      rescueGranted = granted;
+      state.phase = 'start';
+      const btn = document.getElementById('btnStart');
+      if(btn) btn.textContent = '抢 救 鱼 缸';
+      const note = document.getElementById('saveNote');
+      if(note){
+        note.textContent = '鱼缸刚覆没 · 继续可抢救（还剩 ' + Math.max(0, Math.ceil(RESCUE_WINDOW - elapsed)) + ' 秒）'
+          + (granted ? ' · 附赠 1 瓶鱼药' : '');
+        note.classList.add('show');
+      }
+      return 'rescue';
+    }
+    // 超过抢救窗口：按判死处理，鱼不回来
+    const time = Math.max(0, saveNum(resumeData.time, 0));
+    const earned = Math.max(0, Math.round(saveNum(resumeData.earned, 0)));
+    resumeData = null;
+    clearGameSave();
+    state.phase = 'over';
+    state.fish = [];
+    state.time = time;
+    state.earned = earned;
+    showGameOverPanel(time, earned);
+    return 'over';
+  }
+
   applyGameSave(resumeData);
   state.phase = 'start';
   const btn = document.getElementById('btnStart');
@@ -2523,7 +2737,7 @@ function decorEffects(){
 
 function saveDecor(){
   try{
-    localStorage.setItem(DECOR_KEY, JSON.stringify({
+    writeStore(DECOR_KEY, JSON.stringify({
       v:2,
       placed: state.decorPlaced.map(function(d){
         return {
@@ -2538,7 +2752,7 @@ function saveDecor(){
       inv: state.decorInv,
       stock: state.shopStock
     }));
-  }catch(e){}
+  }catch(e){ showSaveWarn(); }
 }
 
 function initDecor(){
@@ -2549,7 +2763,7 @@ function initDecor(){
   let saved = null;
   try{ saved = JSON.parse(localStorage.getItem(DECOR_KEY) || 'null'); }catch(e){}
   if(saved && (saved.v === 1 || saved.v === 2) && Array.isArray(saved.placed)){
-    state.decorPlaced = saved.placed.filter(function(d){ return d && DECOR[d.key]; }).map(function(d){
+    state.decorPlaced = saved.placed.filter(function(d){ return d && ownVal(DECOR, d.key); }).map(function(d){
       let x, y;
       if(saved.v === 2){
         x = clamp(saveNum(d.fx, 0.5), 0, 1) * VW;
@@ -2766,8 +2980,10 @@ function refreshDecorUI(){
 
 /* 造景绘制 */
 function drawDecorItem(d, g, extraAlpha){
-  const def = DECOR[d.key];
+  const def = ownVal(DECOR, d.key);
   if(!def) return;
+  const art = ownVal(DECOR_ART, def.art);
+  if(typeof art !== 'function') return;
   const s = (d.scale || 1) * layerScale(d.layer);
   g.save();
   g.translate(Math.round(d.x), Math.round(d.y));
@@ -2775,7 +2991,7 @@ function drawDecorItem(d, g, extraAlpha){
   g.scale(s, s);
   if(d.layer === 'back') g.globalAlpha *= 0.84;
   if(extraAlpha !== undefined) g.globalAlpha *= extraAlpha;
-  DECOR_ART[def.art](g, d, state.t);
+  art(g, d, state.t);
   g.restore();
 }
 
@@ -2887,10 +3103,7 @@ function feed(){
   }
 }
 
-function spawnAlgae(){
-  const x = rand(LEFT_X + 8, RIGHT_X - 8);
-  const y = rand(SURF_Y + 10, FLOOR_Y - 6);
-  const r = rand(4.5, 9.5);
+function makeAlgaePts(r){
   const pts = [];
   for(let i=0;i<20;i++){
     const a = Math.random()*Math.PI*2;
@@ -2902,7 +3115,13 @@ function spawnAlgae(){
       c: Math.random() < 0.4 ? '#7a9a4a' : '#4a6a34'
     });
   }
-  state.algae.push({x, y, r, pts});
+  return pts;
+}
+function spawnAlgae(){
+  const x = rand(LEFT_X + 8, RIGHT_X - 8);
+  const y = rand(SURF_Y + 10, FLOOR_Y - 6);
+  const r = rand(4.5, 9.5);
+  state.algae.push({x, y, r, pts:makeAlgaePts(r)});
 }
 
 let lastScrubSfx = -1;
@@ -3023,10 +3242,21 @@ function updateSim(dt){
   if(state.feedCd > 0) state.feedCd = Math.max(0, state.feedCd - dt);
   btnFeed.disabled = state.feedCd > 0;
 
-  if(aliveFish().length === 0 && !state.overPending){
+  const aliveN = aliveFish().length;
+  if(aliveN > 0 && state.overPending){
+    state.overPending = false;
+    wipeAt = 0;
+    // 判死期间买鱼救回来了：立刻把覆没记录改回正常进度
+    saveGame();
+  }
+  if(aliveN === 0 && !state.overPending){
     state.overPending = true;
+    wipeAt = Date.now();
+    // 全灭瞬间就落盘判死状态，刷新页面不能免费复活
+    saveWipedRecord();
     setTimeout(()=>{
-      if(state.phase === 'play' && state.overPending) gameOver();
+      // 1.7 秒内可能买鱼或有新鱼入缸，落判前再确认一次
+      if(state.phase === 'play' && state.overPending && aliveFish().length === 0) gameOver();
     }, 1700);
   }
 }
@@ -3071,27 +3301,33 @@ function toast(msg){
   toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2400);
 }
 
+function showGameOverPanel(aliveTime, earned){
+  overlayEl.classList.remove('hidden');
+  panelStart.classList.add('hidden');
+  panelOver.classList.remove('hidden');
+  finalTimeEl.textContent = fmtTime(aliveTime);
+  finalMoneyEl.textContent = earned;
+  let best = 0;
+  try{ best = parseFloat(localStorage.getItem(STORAGE_KEY) || '0') || 0; }catch(e){}
+  if(aliveTime > best){
+    best = aliveTime;
+    try{ localStorage.setItem(STORAGE_KEY, String(best)); }catch(e){}
+  }
+  state.best = best;
+  bestTimeEl.textContent = fmtTime(best);
+}
+
 function gameOver(){
   state.phase = 'over';
-  clearGameSave();
+  if(!wipeAt) wipeAt = Date.now();
+  // 保留覆没记录，60 秒内重开还能抢救；超过窗口读档时按判死处理
+  saveWipedRecord();
   state.cleanMode = false;
   state.treatMode = false;
   btnClean.classList.remove('active');
   btnTreat.classList.remove('active');
   shopEl.classList.add('hidden');
-  overlayEl.classList.remove('hidden');
-  panelStart.classList.add('hidden');
-  panelOver.classList.remove('hidden');
-  finalTimeEl.textContent = fmtTime(state.time);
-  finalMoneyEl.textContent = state.earned;
-  let best = 0;
-  try{ best = parseFloat(localStorage.getItem(STORAGE_KEY) || '0') || 0; }catch(e){}
-  if(state.time > best){
-    best = state.time;
-    try{ localStorage.setItem(STORAGE_KEY, String(best)); }catch(e){}
-  }
-  state.best = best;
-  bestTimeEl.textContent = fmtTime(best);
+  showGameOverPanel(state.time, state.earned);
   Sfx.tone(220, 0.7, 'triangle', 0.10, 70);
 }
 
@@ -3101,7 +3337,13 @@ function startGame(){
   if(resumeData){
     resumeData = null;
     state.phase = 'play';
-    toast('已从存档继续 · 离线期间不结算');
+    if(rescuePending){
+      rescuePending = false;
+      toast(rescueGranted ? '鱼缸刚覆没 · 附赠 1 瓶鱼药 · 用药抢救' : '鱼缸刚覆没 · 鱼正病危 · 买鱼药抢救');
+      rescueGranted = false;
+    } else {
+      toast('已从存档继续 · 离线期间不结算');
+    }
   } else {
     resetGame();
     state.phase = 'play';
@@ -3519,22 +3761,32 @@ function render(){
    ========================================================= */
 let last = performance.now();
 let acc = 0;
+let frameErrShown = false;
 
 function frame(now){
   const raw = Math.min(0.1, (now - last)/1000);
   last = now;
   acc += raw;
 
-  const step = 1/60;
-  let guard = 0;
-  while(acc >= step && guard < 5){
-    tick(step);
-    acc -= step;
-    guard++;
-  }
-  if(guard >= 5) acc = 0;
+  try{
+    const step = 1/60;
+    let guard = 0;
+    while(acc >= step && guard < 5){
+      tick(step);
+      acc -= step;
+      guard++;
+    }
+    if(guard >= 5) acc = 0;
 
-  render();
+    render();
+  }catch(err){
+    // 单帧异常不终止 rAF，避免一处坏数据把整个循环永久停掉
+    acc = 0;
+    if(!frameErrShown){
+      frameErrShown = true;
+      console.error('[cyber-aquarium] frame error:', err);
+    }
+  }
   requestAnimationFrame(frame);
 }
 
@@ -3771,11 +4023,20 @@ window.addEventListener('beforeunload', function(){ saveGame(); });
    ========================================================= */
 initScene();
 makeDither();
+storageOk = storageProbe();
 initDecor();
 buildShop();
-resetGame();
-initGameSave();
-state.phase = 'start';
+resetGame(false); // 启动时保留已读出的造景存档
+const initState = initGameSave();
+if(initState !== 'over') state.phase = 'start';
+if(!storageOk){
+  // 无痕 / 禁用站点数据：本次进度无法保存，只在启动时提示一次
+  const note = document.getElementById('saveNote');
+  if(note){
+    note.textContent = '本次进度不会保存 · 浏览器禁用了站点数据';
+    note.classList.add('show');
+  }
+}
 resize();
 updateHUD();
 refreshShop();
