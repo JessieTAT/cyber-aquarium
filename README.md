@@ -18,6 +18,7 @@ A single-file pixel aquarium game: feed your fish, scrub algae, treat the sick, 
 - 喂食让鱼恢复饱食度；清理擦掉藻斑、拉回水质；用药治好病鱼。
 - 商店可以买鱼、买水草/造景，造景模式里把库存拖进鱼缸；造景会影响水质与收益。
 - 进度自动保存在浏览器 `localStorage`，关掉页面再打开会接着上次的鱼缸。
+- 页面开着时自动挂机：切到别的标签页也计时，离开多少轮就补多少轮收益（每 5 分钟一轮）；水质、饱食、生病与老化按半速推进，单次最多补 8 小时，回到前台会弹一条结算提示。
 - 界面支持中文 / English 切换：开始面板与游戏内 HUD 都能切，选择会记住，不影响当前进度。
 
 > 当前为 **Demo 版**，稳定性修复后的预览发布。规则补充：全缸覆没后 60 秒内重新打开并点「抢救鱼缸」，鱼会以病危状态回来（并附赠 1 瓶鱼药），超过 60 秒则按判死进入结算；刷新页面不会免费复活，也不会清掉藻斑和粪便，脏污程度与下一次生成时间会原样续上（水中未吃完的散饵不保存）。
@@ -75,6 +76,7 @@ python3 -m http.server 8080
 - Feed to restore fullness, scrub algae off the glass to bring water quality back, and use medicine to cure sick fish.
 - The shop sells fish, medicine, plants and decorations. In Decor mode, drag items from your inventory into the tank; decorations affect water quality and income.
 - Progress autosaves to browser `localStorage`, so closing the page and coming back picks up where you left off.
+- Idle farming while the page stays open: time keeps counting even when you switch tabs. Every 5-minute round you were away is paid in full, while water quality, fullness, sickness and aging advance at half speed (up to 8 hours per catch-up). A summary pops up when you return.
 - The interface switches between 中文 and English from the start panel or the in-game HUD. Your choice is remembered and does not reset the current run.
 
 > This is the **Demo build**, a preview release with the stability fixes included. Extra rules: if the whole tank dies, reopen the page within 60 seconds and press "RESCUE" to bring your fish back in critical condition (with 1 free medicine); after 60 seconds the run is settled as a loss. Reloading never revives fish for free and never cleans algae or poop—dirt levels and the next algae spawn timer carry over exactly as they were (uneaten food in the water is not saved).

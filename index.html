@@ -151,6 +151,18 @@
     padding:5px 12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:4;
   }
   #toast.show{opacity:1}
+  /* 回前台挂机结算提示：可折行，自动消失，不挡操作 */
+  #idleNote{
+    position:absolute;top:84px;left:50%;transform:translateX(-50%);
+    max-width:min(560px,calc(100% - 24px));
+    padding:6px 13px;text-align:center;
+    font-size:10px;line-height:1.6;letter-spacing:1px;color:#ffe6c4;
+    background:rgba(22,15,42,.94);border:1px solid rgba(255,179,80,.55);
+    box-shadow:0 0 20px rgba(255,179,80,.2);
+    opacity:0;transition:opacity .3s;pointer-events:none;z-index:6;
+    white-space:normal;overflow-wrap:break-word;
+  }
+  #idleNote.show{opacity:1}
 
   /* ===== 控制条：浮在鱼缸底部 ===== */
   #controls{
@@ -439,6 +451,7 @@
     .panel li{font-size:10px}
     .langPick button{min-height:42px;font-size:13px}
     #toast{font-size:9px;letter-spacing:1px;padding:4px 8px;top:94px}
+    #idleNote{top:96px;font-size:9.5px;letter-spacing:.5px;padding:5px 10px}
     #decorControls{padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));gap:6px}
     .dcBtn{min-height:40px;padding:9px 11px;font-size:10px}
     .shopTabs button{min-height:38px;padding:8px 10px;font-size:10px}
@@ -502,6 +515,7 @@
   <div id="screen">
     <canvas id="cv"></canvas>
     <div id="toast"></div>
+    <div id="idleNote"></div>
   </div>
 
   <footer id="controls">
@@ -824,6 +838,8 @@ const I18N = {
     'toast.rescueGift': '鱼缸刚覆没 · 附赠 1 瓶鱼药 · 用药抢救',
     'toast.rescueBuy': '鱼缸刚覆没 · 鱼正病危 · 买鱼药抢救',
     'toast.resumed': '已从存档继续 · 离线期间不结算',
+    'idle.summary': '挂机 %1 · 收益 +¥%2 · 水质 %3% · 饱食 %4%',
+    'idle.capped': ' · 已按 8 小时上限补算',
     'toast.fishSick': '%1 生病了 · 买鱼药治疗',
     'toast.diedOld': '%1 寿终正寝',
     'toast.diedSick': '%1 病逝了',
@@ -950,6 +966,8 @@ const I18N = {
     'toast.rescueGift': 'Tank wiped · 1 free medicine · Treat now',
     'toast.rescueBuy': 'Tank wiped · Fish critical · Buy medicine',
     'toast.resumed': 'Resumed · No offline income',
+    'idle.summary': 'Away %1 · Income +¥%2 · Water %3% · Fullness %4%',
+    'idle.capped': ' · capped at 8h',
     'toast.fishSick': '%1 got sick · Buy medicine',
     'toast.diedOld': '%1 died of old age',
     'toast.diedSick': '%1 died of sickness',
@@ -1394,6 +1412,7 @@ const vWater = document.getElementById('vWater');
 const clockEl = document.getElementById('clock');
 const fishCountEl = document.getElementById('fishCount');
 const toastEl = document.getElementById('toast');
+const idleNoteEl = document.getElementById('idleNote');
 const overlayEl = document.getElementById('overlay');
 const panelStart = document.getElementById('panelStart');
 const panelOver = document.getElementById('panelOver');
@@ -2235,11 +2254,12 @@ class Fish{
 
   isOld(){ return this.lifeFrac() > 0.78; }
 
-  becomeSick(){
+  becomeSick(silent){
     if(this.sick || !this.alive) return;
     this.sick = true;
     this.sev = 0;
     this.risk = 1;
+    if(silent) return;
     burst(this.x, this.y, 8, '#cfe8d8', 16, 0.6);
     Sfx.tone(320, 0.4, 'triangle', 0.07, 180);
     toast(T('toast.fishSick', spLabel(this.species)));
@@ -2252,13 +2272,14 @@ class Fish{
     this.health = Math.min(100, this.health + 35);
   }
 
-  die(cause){
+  die(cause, silent){
     if(!this.alive) return;
     this.alive = false;
     this.deadT = 0;
     this.health = 0;
     this.sick = false;
     this.cause = cause;
+    if(silent) return;
     burst(this.x, this.y, 14, cause === 'old' ? '#d8c8a8' : '#9fb4c8', 26, 0.9);
     Sfx.tone(cause === 'old' ? 240 : 150, 0.55, 'sawtooth', 0.10, cause === 'old' ? 110 : 55);
     if(cause === 'old') toast(T('toast.diedOld', spLabel(this.species)));
@@ -2843,7 +2864,8 @@ function clearGameSave(){
 /* =========================================================
    金钱收益
    ========================================================= */
-function settleIncome(){
+/* 本轮可结算收益：按当前鱼况/水质/造景计算，实时与挂机补算共用 */
+function incomeTotal(){
   const alive = aliveFish();
   let total = 0;
   for(const f of alive){
@@ -2857,7 +2879,11 @@ function settleIncome(){
     total += m;
   }
   total *= 1 + (state.fx ? state.fx.income : 0);   // 气泡石加成
-  total = Math.max(0, Math.round(total));
+  return Math.max(0, Math.round(total));
+}
+
+function settleIncome(){
+  const total = incomeTotal();
   state.money += total;
   state.earned += total;
   if(total > 0){
@@ -3556,6 +3582,8 @@ function scrub(x, y){
 }
 
 function tick(dt){
+  // 后台期间不推进实时模拟，统一由回前台的挂机补算处理，避免重复结算
+  if(document.hidden) return;
   state.t += dt;
 
   // 环境动画（任何阶段都跑）
@@ -3608,15 +3636,21 @@ function tick(dt){
   }
 }
 
-function updateSim(dt){
-  state.fx = decorEffects();
-
-  // 水质衰减：整缸水能撑过大半天；植物持续净水
+/* 当前水质衰减速率（每秒）：基础 + 鱼/藻/粪便/残饵，挂机补算与实时共用 */
+function waterDecayRate(){
   let decay = TUNING.waterBase
     + TUNING.waterPerFish*aliveFish().length
     + TUNING.waterPerAlgae*state.algae.length
     + TUNING.waterPerPoop*state.poops.length;
   for(const f of state.foods) if(f.rest) decay += TUNING.waterPerFood;
+  return decay;
+}
+
+function updateSim(dt){
+  state.fx = decorEffects();
+
+  // 水质衰减：整缸水能撑过大半天；植物持续净水
+  const decay = waterDecayRate();
   state.water = clamp(state.water - decay*dt + state.fx.water*dt, 0, 100);
 
   // 每 5 分钟结算一次收益
@@ -3672,6 +3706,189 @@ function updateSim(dt){
     state.overTimer += dt;
     if(state.overTimer >= 1.7 && aliveFish().length === 0) gameOver();
   }
+}
+
+/* =========================================================
+   挂机补算：页面开着时按墙钟计时，切后台/系统休眠回来一次结算
+   - 收益按真实经过时间每 5 分钟一轮全额补发
+   - 水质/饱食/健康/生病/老化等衰减按真实时间 × 0.5 推进
+   - 单次最多补 8 小时；粗粒度步进，不逐帧模拟
+   ========================================================= */
+const IDLE_MAX_SEC = 8*3600;
+const IDLE_DECAY_SCALE = 0.5;
+const IDLE_MIN_SEC = 5;        // 小于 5 秒的切换不弹总结
+const IDLE_GAP_SEC = 10;       // rAF 断档超过 10 秒视为休眠/冻结
+let idleBusy = false;          // 防止重入造成重复结算
+let idleNoteTimer = 0;
+let hiddenAt = 0;
+let lastWallT = Date.now();
+
+function avgFullnessNow(){
+  const a = aliveFish();
+  if(!a.length) return 0;
+  return a.reduce((s,f)=>s+f.fullness, 0) / a.length;
+}
+
+function fmtAway(sec){
+  const s = Math.max(0, Math.round(sec));
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  if(isEn()) return h > 0 ? h + 'h ' + m + 'm' : (m > 0 ? m + 'm' : s + 's');
+  if(h > 0) return h + ' 小时 ' + m + ' 分';
+  if(m > 0) return m + ' 分钟';
+  return s + ' 秒';
+}
+
+/* 只推进衰减项，跳过游动/觅食/喂食等实时行为 */
+function idleFishDecay(f, dt){
+  if(!f.alive) return;
+  const sp = f.species;
+  f.age += dt;
+  f.fullness = Math.max(0, f.fullness - TUNING.hungerRate*dt);
+
+  if(f.age >= sp.lifespan){ f.die('old', true); return; }
+
+  let dh = 0;
+  if(f.fullness <= 0) dh -= TUNING.starveHealth;
+  if(state.water < 25) dh -= TUNING.dirtyHealth;
+  else if(state.water < 45) dh -= TUNING.dirtyHealth*0.45;
+  if(f.fullness > 45 && state.water > 65) dh += 0.0035;
+  if(dh !== 0){
+    f.health = clamp(f.health + dh*dt, 0, 100);
+    if(f.health <= 0){ f.die('weak', true); return; }
+  }
+
+  const hungry = f.fullness < TUNING.hungryLine;
+  const dirty = state.water < TUNING.dirtyLine;
+  const coralGuard = 1 - (state.fx ? state.fx.coral : 0);
+  if(!f.sick){
+    if(hungry) f.risk += dt * TUNING.sickRiskHunger * (1.5 - sp.hardiness) * coralGuard;
+    if(dirty)  f.risk += dt * TUNING.sickRiskWater  * (1.5 - sp.hardiness) * coralGuard;
+    if(!hungry && !dirty) f.risk = Math.max(0, f.risk - dt*TUNING.sickRiskDecay);
+    if(f.risk >= 1) f.becomeSick(true);
+  } else {
+    f.sev += dt * TUNING.sickSeverity * (1.35 - sp.hardiness*0.6);
+    if(f.sev >= 1){ f.die('sick', true); return; }
+  }
+
+  // 排泄照常累积，让水质压力与实时一致
+  f.poopT -= dt;
+  let guard = 0;
+  while(f.poopT <= 0 && guard < 10){
+    f.poopT += rand(90, 180);
+    guard++;
+    if(f.fullness > 35 && state.poops.length < 80){
+      state.poops.push({x:f.x + rand(-2,2), y:f.y + 3, vy:9, life:60, rest:false});
+    }
+  }
+}
+
+function idleDecayStep(dt){
+  if(dt <= 0) return;
+
+  state.water = clamp(state.water - waterDecayRate()*dt + state.fx.water*dt, 0, 100);
+
+  // 藻斑生长同样按半速推进，避免长时间挂机后水质凭空变差
+  state.algaeTimer -= dt;
+  let guard = 0;
+  while(state.algaeTimer <= 0 && guard < 8){
+    state.algaeTimer += rand(100, 170);
+    guard++;
+    if(state.algae.length < 12 && state.water < 99.9) spawnAlgae();
+  }
+
+  // 已有粪便落地并按半速老化
+  for(const p of state.poops){
+    if(!p.rest){ p.rest = true; p.y = FLOOR_Y - 2; }
+    p.life -= dt;
+  }
+  state.poops = state.poops.filter(p=>p.life > 0);
+
+  // 残饵同样落底并按半速腐败，避免挂机时旧饵一直拉低水质
+  for(const p of state.foods){
+    if(!p.rest){ p.rest = true; p.y = FLOOR_Y - 5; }
+    else p.life -= dt;
+  }
+  state.foods = state.foods.filter(p=> !p.eaten && (p.rest ? p.life > 0 : true));
+
+  for(const f of state.fish) idleFishDecay(f, dt);
+}
+
+function creditIdleIncome(){
+  const total = incomeTotal();
+  state.money += total;
+  state.earned += total;
+  return total;
+}
+
+function showIdleSummary(info){
+  let msg = T('idle.summary', fmtAway(info.sec), Math.max(0, Math.round(info.money)),
+              Math.round(info.water), Math.round(info.fullness));
+  if(info.capped) msg += T('idle.capped');
+  idleNoteEl.textContent = msg;
+  idleNoteEl.classList.add('show');
+  clearTimeout(idleNoteTimer);
+  idleNoteTimer = setTimeout(function(){ idleNoteEl.classList.remove('show'); }, 8000);
+}
+
+/* 统一入口：按真实秒数补算。返回 null 表示没有补算 */
+function runIdleCatchUp(rawSec){
+  if(idleBusy || state.phase !== 'play' || state.overPending) return null;
+  const capped = rawSec > IDLE_MAX_SEC + 1;
+  const total = Math.min(IDLE_MAX_SEC, Math.max(0, rawSec));
+  if(total < IDLE_MIN_SEC) return null;
+
+  idleBusy = true;
+  const beforeMoney = state.money;
+  state.fx = decorEffects();
+
+  let elapsed = total;
+  let rounds = 0;
+  const wait = clamp(state.incomeT, 0.01, TUNING.incomeInterval);
+
+  if(elapsed < wait){
+    idleDecayStep(elapsed * IDLE_DECAY_SCALE);
+    state.incomeT = wait - elapsed;
+  } else {
+    // 第一轮：先走完当前倒计时，再按 5 分钟一轮补发
+    idleDecayStep(wait * IDLE_DECAY_SCALE);
+    elapsed -= wait;
+    rounds++;
+    creditIdleIncome();
+    while(elapsed >= TUNING.incomeInterval){
+      elapsed -= TUNING.incomeInterval;
+      idleDecayStep(TUNING.incomeInterval * IDLE_DECAY_SCALE);
+      rounds++;
+      creditIdleIncome();
+    }
+    idleDecayStep(elapsed * IDLE_DECAY_SCALE);
+    state.incomeT = clamp(TUNING.incomeInterval - elapsed, 0.01, TUNING.incomeInterval);
+  }
+
+  // 存活时长按真实时间前进；衰减已按半速补过
+  state.time += total;
+  state.fx = decorEffects();
+  state.saveAcc = 0;
+
+  const info = {
+    sec: total,
+    capped: capped,
+    rounds: rounds,
+    money: state.money - beforeMoney,
+    water: state.water,
+    fullness: avgFullnessNow()
+  };
+
+  const anyAlive = aliveFish().length > 0;
+  idleBusy = false;
+
+  if(anyAlive){
+    saveGame();
+    showIdleSummary(info);
+  }
+  // 全灭时什么都不弹：交给下一帧 updateSim 走正常判死/覆没流程
+  updateHUD();
+  refreshShop();
+  return info;
 }
 
 function updateHUD(){
@@ -4177,6 +4394,13 @@ let acc = 0;
 let frameErrShown = false;
 
 function frame(now){
+  // 系统休眠/页面冻结：rAF 断档超过阈值时按挂机补算，避免时间凭空丢失
+  const wallNow = Date.now();
+  if(!document.hidden && state.phase === 'play' && wallNow - lastWallT > IDLE_GAP_SEC*1000){
+    runIdleCatchUp((wallNow - lastWallT)/1000);
+  }
+  lastWallT = wallNow;
+
   const raw = Math.min(0.1, (now - last)/1000);
   last = now;
   acc += raw;
@@ -4431,9 +4655,17 @@ document.querySelectorAll('#langPick button[data-lang]').forEach(function(b){
   b.addEventListener('click', function(){ setLang(b.dataset.lang); });
 });
 
-/* 切到后台 / 关闭页面时立即落盘 */
+/* 切到后台 / 关闭页面时立即落盘；回前台按墙钟补算 */
 document.addEventListener('visibilitychange', function(){
-  if(document.hidden) saveGame();
+  if(document.hidden){
+    saveGame();
+    hiddenAt = Date.now();
+  } else if(hiddenAt){
+    const raw = (Date.now() - hiddenAt)/1000;
+    hiddenAt = 0;
+    runIdleCatchUp(raw);
+    lastWallT = Date.now();
+  }
 });
 window.addEventListener('pagehide', function(){ saveGame(); });
 window.addEventListener('beforeunload', function(){ saveGame(); });
