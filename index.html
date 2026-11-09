@@ -199,6 +199,14 @@
   .hint>span{display:block;white-space:nowrap}
   .hint b{color:#e2c69a;font-weight:400}
   .hint .hintTips{color:#6f6a86}
+  /* 创作者署名：左下角，低对比但可读 */
+  #credit{
+    position:absolute;left:16px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:5;
+    font-size:9px;line-height:1;letter-spacing:2px;color:#7b7592;
+    opacity:.9;pointer-events:none;white-space:nowrap;
+    text-shadow:0 0 4px rgba(8,6,18,.95),0 0 10px rgba(8,6,18,.8);
+  }
+  #credit.hidden{display:none}
 
   /* ===== 遮罩层 ===== */
   #overlay{
@@ -228,6 +236,8 @@
     text-shadow:0 0 18px rgba(255,179,80,.55),0 0 44px rgba(255,122,92,.28);
   }
   .panel .sub{font-size:8px;letter-spacing:4px;color:var(--dim);margin:10px 0 18px}
+  /* 开始面板署名：标题下方，低对比 */
+  .madeBy{font-size:9px;letter-spacing:3px;color:#6f6a86;opacity:.9;text-align:left;margin:14px 0 -10px}
   .saveNote{display:none;margin-top:12px;font-size:9px;letter-spacing:2px;color:var(--dim)}
   .saveNote.show{display:block}
   /* 开始面板语言选择：等宽两枚，当前语言高亮 */
@@ -436,6 +446,10 @@
     #btnLang{height:32px}
     #btnLang span{padding:0 8px;font-size:11px}
     #btnSound{flex:0 0 32px;width:32px;height:32px;font-size:17px}
+    #credit{
+      left:10px;bottom:calc(128px + env(safe-area-inset-bottom,0px));font-size:9px;
+      padding:3px 7px;background:rgba(8,6,18,.62);border:1px solid rgba(123,117,146,.22);
+    }
     .hint{display:none}
     #controls{
       display:grid;grid-template-columns:repeat(6,1fr);
@@ -475,6 +489,10 @@
     #controls{padding:14px 10px calc(7px + env(safe-area-inset-bottom,0px));gap:7px;flex-wrap:nowrap}
     #controls .btn{min-height:36px;padding:6px 10px;font-size:11px;letter-spacing:1px}
     #controls .hint{display:none}
+    #credit{
+      left:10px;bottom:calc(62px + env(safe-area-inset-bottom,0px));font-size:8px;
+      padding:2px 6px;background:rgba(8,6,18,.62);border:1px solid rgba(123,117,146,.22);
+    }
     #decorControls{padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
     .dcBtn{min-height:34px;padding:6px 9px}
     .panel h1{font-size:24px}
@@ -529,6 +547,7 @@
       <span class="hintTips" data-i18n="hint.tips">点鱼查看状态 · 点水面撒饵</span>
     </div>
   </footer>
+  <div id="credit">🥨JIE</div>
 
   <footer id="decorControls" class="hidden">
     <div class="dcRow">
@@ -570,6 +589,7 @@
       </div>
       <button id="btnStart" class="btn big">进 入 鱼 缸</button>
       <div class="saveNote" id="saveNote">存档已读取 · 继续上次的鱼缸</div>
+      <div class="madeBy">🥨JIE</div>
     </div>
     <div class="panel hidden" id="panelOver">
       <div class="tag danger">// SIGNAL LOST</div>
@@ -1433,6 +1453,7 @@ const shopMoneyEl = document.getElementById('shopMoney');
 const shopCapEl = document.getElementById('shopCap');
 const finalMoneyEl = document.getElementById('finalMoney');
 const controlsEl = document.getElementById('controls');
+const creditEl = document.getElementById('credit');
 const btnDecor = document.getElementById('btnDecor');
 const decorControlsEl = document.getElementById('decorControls');
 const decorInvEl = document.getElementById('decorInv');
@@ -2552,6 +2573,7 @@ function resetGame(resetDecor){
   btnDecor.classList.remove('active');
   controlsEl.classList.remove('hidden');
   decorControlsEl.classList.add('hidden');
+  creditEl.classList.remove('hidden');
   shopEl.classList.add('hidden');
   updateHUD();
   refreshShop();
@@ -3341,6 +3363,7 @@ function toggleDecor(){
   }
   controlsEl.classList.toggle('hidden', state.decorMode);
   decorControlsEl.classList.toggle('hidden', !state.decorMode);
+  creditEl.classList.toggle('hidden', state.decorMode);
   btnDecor.classList.toggle('active', state.decorMode);
   refreshDecorUI();
   requestAnimationFrame(resize);
