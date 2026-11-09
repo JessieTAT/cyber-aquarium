@@ -55,7 +55,7 @@ python3 -m http.server 8080
 
 | 文件 | 规格 | 用途 |
 | --- | --- | --- |
-| `aquarium-demo.mp4` | 1920×1080 · 30fps · 42.7s | 横屏完整演示：进入鱼缸 → 喂食近景 → 商店买鱼与铁皇冠 → 造景入缸 → 清理（脏→净）→ 用药治病 → 收益结算 → 落版 |
+| `aquarium-demo.mp4` | 1920×1080 · 30fps · 39.9s | 横屏完整演示：开始面板切换语言 → 进入鱼缸 → 喂食近景 → 游戏内切英文并逛英文商店 → 造景入缸 → 清理（脏→净）→ 用药治病 → 收益结算 → 落版；全片中英双语字幕 |
 | `aquarium-demo-vertical.mp4` | 1080×1920 · 30fps · 29.9s | 手机竖屏分享版，节奏更快，原生竖屏布局实机录制 |
 
 两版都是实机录屏。音轨（city pop 器乐 + 水下环境声 + 交互音效）为程序合成，未使用第三方版权素材。
@@ -113,7 +113,7 @@ python3 -m http.server 8080
 
 | File | Spec | What it shows |
 | --- | --- | --- |
-| `aquarium-demo.mp4` | 1920×1080 · 30fps · 42.7s | Full landscape walkthrough: enter the tank → close-up feeding → buying a fish and a Java fern → placing decor → cleaning (dirty to clean) → treating a sick fish → income settlement → end card |
+| `aquarium-demo.mp4` | 1920×1080 · 30fps · 39.9s | Full landscape walkthrough: language switch on the start screen → enter the tank → close-up feeding → switch to English in-game and shop in the English UI → placing decor → cleaning (dirty to clean) → treating a sick fish → income settlement → end card; bilingual subtitles throughout |
 | `aquarium-demo-vertical.mp4` | 1080×1920 · 30fps · 29.9s | Faster vertical cut for phone sharing, recorded on the native portrait layout |
 
 Both videos are real screen recordings. The audio (city pop instrumental, underwater ambience and interaction sounds) is synthesized in code; no third-party copyrighted material is used.
